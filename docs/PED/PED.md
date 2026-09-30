@@ -541,8 +541,264 @@ Milestone 4 -> release/acceptance evidence:
 
 https://github.com/602082-Belgiumcampus/SEN381-GroupH
 
+
+
+# Technology
+## Technology Selection
+
+The project requires a web-based application with authenticated users, role-based access, structured service-request data, reporting, auditability and a persistent relational database.
+
+The proposed baseline technology stack is:
+
+| Area | Selected Technology | Purpose |
+|---|---|---|
+| Application framework | ASP.NET Core 10 | Web application and HTTP/API functionality |
+| Programming language | C# | Application and domain development |
+| UI | ASP.NET Core Razor Pages / MVC | Server-rendered web interface |
+| Runtime | .NET 10 LTS | Application runtime |
+| ORM / data access | Entity Framework Core 10 | Database access and migrations |
+| Database | PostgreSQL | Persistent relational storage |
+| Authentication / authorization | ASP.NET Core Authentication & Authorization | User identity and role/policy access control |
+| Testing | xUnit | Automated unit testing |
+| Source control | Git / GitHub | Version control, collaboration and review |
+| Configuration | ASP.NET Core configuration + environment variables | Environment-specific configuration and secrets |
+| Deployment | Container-compatible web deployment | Consistent deployment environment |
+| API/interface | ASP.NET Core HTTP endpoints where required | Internal/external system integration |
+
+ASP.NET Core provides built-in support for web applications, APIs, dependency injection, configuration, authentication and authorization. It also supports MVC and other web UI approaches within the same platform.
+
+.NET 10 was selected rather than .NET 8 because .NET 10 is the current LTS release and provides a longer supported baseline for the project.
+
+## Database
+
+PostgreSQL was selected as the persistence technology because CivicConnect's core data is relational:
+
+- users have roles;
+- requests have categories and statuses;
+- requests have requesters;
+- staff may be assigned to requests;
+- requests have comments/history;
+- significant actions must be traceable;
+- management reporting requires structured queries.
+
+A relational database therefore fits the domain better than introducing a document-oriented database.
+
+Entity Framework Core will provide the application data-access layer. EF Core migrations allow database schema changes to be represented as source-controlled migration files, allowing the database schema to evolve alongside the application.
+
+---
+
+## Alternatives Considered
+
+The team considered several possible approaches before establishing the technology baseline.
+
+| Decision | Alternative | Selected | Reason |
+|---|---|---|---|
+| Backend | Node.js/Express | ASP.NET Core | Strong built-in security, authentication, authorization, DI and testing support |
+| Backend | Django/Python | ASP.NET Core | C#/.NET provides a unified language/runtime for the proposed application |
+| UI | React SPA | Razor Pages/MVC | Lower architectural complexity for a small team and CRUD/reporting-oriented system |
+| Database | MongoDB | PostgreSQL | CivicConnect has strongly relational data and reporting requirements |
+| Database | MySQL | PostgreSQL | Mature relational database with strong SQL capabilities |
+| Data access | Raw SQL | EF Core | Strong integration with .NET and source-controlled migrations |
+| API | Separate API project | ASP.NET Core endpoints within application | Avoids unnecessary service separation at current scope |
+| Hosting | Complex cloud architecture | Simple container-compatible deployment | Keeps cost and operational complexity proportional to the project |
+
+The team deliberately avoided introducing a microservices architecture. CivicConnect does not currently have the scale, independent deployment requirements or integration complexity that would justify splitting the system into multiple independently deployed services.
+
+The architecture therefore favours a **modular monolithic web application**.
+
+---
+
+## Technology Decision
+
+The selected technology baseline is:
+
+> **ASP.NET Core 10 + C# + Razor Pages/MVC + Entity Framework Core + PostgreSQL**
+
+This combination provides one primary development ecosystem rather than requiring the three-person team to maintain multiple application stacks.
+
+## Authentication and Authorization
+
+Authentication and authorization are treated as separate concerns.
+
+Authentication determines who the user is, while authorization determines what that user is allowed to do.
+
+CivicConnect requires role-scoped access because M1 identified privacy and access control as important stakeholder concerns.
+
+The initial roles are:
+
+|Role |	Intended Access |
+|---|---|
+|Requester|	Create and view their own requests|
+|Service Staff|	View and manage requests assigned/relevant to them|
+|Supervisor|	Manage operational requests and staff activity|
+|Management|	Access reporting and oversight functions|
+|Administrator|	Manage users, roles and system configuration|
+
+
+## Configuration and Secrets
+
+Environment-specific configuration will not be hard-coded into the application.
+
+The application will use environment configuration for values such as database connection strings, authentication configuration, deployment-specific settings, development/test/production differences.
+
+Secrets must not be committed to GitHub.
+.env.example may document the required configuration keys, but actual credentials must remain outside source control.
+
+# Research-Informed Design Decisions & Integration
+## Design Problem 1: Role-Based Access Is Not Enough
+
+Problem:
+CivicConnect contains sensitive service-request information.
+
+M1 identified the following conflict:
+CF-1 — Visibility vs Privacy
+
+The system must allow users to access the information they need while preventing unauthorized access to protected request information. A simple role check with and if statement will not do.
+
+|Approach|	Advantages|	Disadvantages|
+|---|---|---|
+|Role checks only|	Simple|	Too coarse for resource-level access|
+|Hard-coded controller checks|	Easy initially|	Repeated security logic and difficult maintenance|
+|Policy-based authorization|	Centralised rules; supports requirements and handlers|	More initial design work|
+|Separate authorization service|	Strong separation|	Excessive complexity for CivicConnect|
+
+Decision:
+CivicConnect will use role-based authorization for broad capabilities and policy/resource-based authorization for sensitive resource access.
+
+Benefit:
+This approach supports the M1 requirements for protected request information, role-scoped functionality, traceable actions, privacy, future expansion of authorization rules.
+
+
+## Design Problem 2: Controlling the Service Request Lifecycle
+
+Problem:
+CivicConnect is fundamentally a service-request lifecycle system.
+
+A request should not be able to move arbitrarily between states.
+
+This relates directly to requirements FR-009 through FR-013 and the stakeholder need for controlled statuses and traceable request history.
+
+Alternatives Considered:
+|Approach|	Advantages|	Disadvantages|
+|---|---|---|
+|Free-form status values|	Very simple|	Allows invalid states|
+|Controller if/else checks|	Easy to start|	Logic becomes duplicated|
+|Database-only constraints|	Protects stored data|	Does not express complete business behaviour|
+|State/transition approach|	Explicit valid transitions|	More design structure required|
+
+Decision:
+CivicConnect will model the request lifecycle as an explicit state-transition rule set.
+
+The design makes the business rule explicit instead of allowing each controller or UI screen to interpret statuses independently.
+
+Benefit:
+Controlled lifecycle transitions, fewer invalid states, centralised business rules, better testability, auditability, easier future modification
+
+## Research-to-Decision Summary
+|Research Finding|	CivicConnect Decision|	Requirement/Concern|
+|---|---|---|
+|ASP.NET Core supports role and policy-based authorization|	Use roles plus policies for sensitive resources|	FR-018, N-X1|
+|Authorization is separate from authentication|	Treat identity and access control as separate responsibilities|	N-X1|
+|EF Core migrations allow schema evolution to be source controlled|	Use EF Core migrations|	Data integrity / maintainability|
+|Application logging provides security/audit information beyond infrastructure logs|	Record significant request actions/status changes|	FR-019, N-X2|
+|GitHub protected branches can require PR reviews and status checks|	Protect main and require review before merge|	Governance / authenticity|
+|.NET 10 is current LTS|	Use .NET 10 as runtime baseline|	Maintainability|
+|PostgreSQL has a long supported lifecycle|	Use PostgreSQL relational persistence|	Data / maintainability|
+
+## Architecture Decision Records
+ADR-001 — Select ASP.NET Core and .NET 10
+
+Status: Accepted
+
+Context:
+CivicConnect requires a maintainable web application with authentication, authorization, persistence, testing and reporting. The project has a three-person development team and limited budget.
+
+Decision:
+Use ASP.NET Core 10 and C# as the primary application platform.
+
+Alternatives:
+
+Node.js/Express
+Django/Python
+ASP.NET Core
+
+Reason:
+ASP.NET Core provides an integrated ecosystem for web development, APIs, authentication, authorization, configuration, dependency injection and testing. .NET 10 provides an LTS baseline.
+
+Consequences:
+
+Positive:
+- single primary language
+- strong framework support
+- built-in security mechanisms
+- long supported baseline
+-suitable for a small team
+
+Negative:
+
+- team must remain familiar with the .NET ecosystem;
+- changing to another platform later would require significant redevelopment.
+
+ADR-002 — Select PostgreSQL with EF Core
+
+Status: Accepted
+
+Context:
+CivicConnect contains strongly related entities and requires reporting, filtering, lifecycle history and data integrity.
+
+Decision:
+Use PostgreSQL as the relational database and Entity Framework Core as the primary application data-access technology.
+
+Reason:
+The relational model fits the domain. EF Core provides integrated data access and source-controlled migrations.
+
+Consequences:
+
+Positive:
+
+- relational integrity
+- structured querying
+- suitable reporting
+- controlled schema evolution
+- database changes can be represented in source control
+
+Negative:
+
+- schema changes require migration management
+- database deployment must be coordinated with application versions
+
+ADR-003 — Use Policy-Based Authorization for Sensitive Resources
+
+Status: Accepted
+
+Context:
+Was identified privacy as a major concern. Role membership alone may not determine whether a user can access a particular request.
+
+Decision:
+Use role-based authorization for broad functionality and policy/resource-based authorization for sensitive resource access.
+
+Reason:
+ASP.NET Core provides policy requirements and authorization handlers that allow authorization to consider more than simple role membership.
+
+Consequences:
+
+Positive:
+
+- clearer security boundaries
+- centralised authorization rules
+- easier testing
+- supports future access-control requirements
+
+Negative:
+
+- more complex than role checks alone
+- requires dedicated authorization testing
+
+
 # AI Usage Register
 
 | Date | Student | Tool | Engineering Task | AI contribution | Verification | Decision | Issues found |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 09/09/2026 | Markus | Copilot | Grammar and format check | Correct grammar and ensuring format of tables or cohesive | Ensure only grammar/spelling mistakes have been changed and nothing else | Accepted | none |
+| 09/09/2026 | Markus | Copilot | Conversion between markdown and word document | Conversion between docx and md | Ensure only conversion was mad and nothing else | Accepted | none |
+| 09/30/2026 | Markus | Copilot | Grammar and format check | Correct grammar and ensuring format of tables or cohesive | Ensure only grammar/spelling mistakes have been changed and nothing else | Accepted | none |
