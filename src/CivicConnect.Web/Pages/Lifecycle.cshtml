@@ -1,0 +1,123 @@
+@page
+@using CivicConnect.Modules.Lifecycle
+@model LifecycleModel
+@{
+    ViewData["Title"] = "Request lifecycle";
+
+    string BadgeClass(RequestStatus status) =>
+        status == Model.Current.Status ? "text-bg-primary"
+        : Model.HasPassed(status) ? "text-bg-success"
+        : "text-bg-light border";
+
+    string StateNote(RequestStatus status) =>
+        status == Model.Current.Status ? " (current)"
+        : Model.HasPassed(status) ? " (done)"
+        : string.Empty;
+}
+
+<h1 class="h3">Request lifecycle</h1>
+<p>
+    A request moves through these states. Only the moves listed below are allowed and anything else is
+    refused
+</p>
+
+<section class="card mb-4" aria-labelledby="mock-heading">
+    <div class="card-body">
+        <h2 class="h5" id="mock-heading">Example request</h2>
+        <p class="text-muted">
+            These buttons allow you to move through the request stages
+        </p>
+
+        @if (Model.Refusal is not null)
+        {
+            <div class="alert alert-warning" role="alert">@Model.Refusal</div>
+        }
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            @foreach (var status in Enum.GetValues<RequestStatus>().Where(s => s != RequestStatus.Rejected))
+            {
+                if (status != RequestStatus.Submitted)
+                {
+                    <span aria-hidden="true">&rarr;</span>
+                }
+                <span class="badge rounded-pill fs-6 @BadgeClass(status)">@LifecycleModel.Label(status)<span class="visually-hidden">@StateNote(status)</span></span>
+            }
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <span class="text-muted">or, from Submitted</span>
+            <span aria-hidden="true">&rarr;</span>
+            <span class="badge rounded-pill fs-6 @BadgeClass(RequestStatus.Rejected)">@LifecycleModel.Label(RequestStatus.Rejected)<span class="visually-hidden">@StateNote(RequestStatus.Rejected)</span></span>
+        </div>
+
+        <p>
+            Current state: <strong>@LifecycleModel.Label(Model.Current.Status)</strong>.
+            @if (Model.IsFinal)
+            {
+                <span>This state is final, so no further actions are allowed.</span>
+            }
+        </p>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var action in Model.Actions)
+            {
+                if (action.Allowed)
+                {
+                    <a class="btn btn-primary" asp-page="/Lifecycle" asp-route-steps="@action.Steps">@action.Event</a>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-outline-secondary" disabled>@action.Event</button>
+                }
+            }
+            <a class="btn btn-link" asp-page="/Lifecycle">Start over</a>
+        </div>
+
+        @if (Model.History.Count > 0)
+        {
+            <table class="table table-sm align-middle mb-0">
+                <caption>What has happened to the mock request so far</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Step</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">From state</th>
+                        <th scope="col">To state</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.History.Count; i++)
+                    {
+                        <tr>
+                            <th scope="row">@(i + 1)</th>
+                            <td>@Model.History[i].EventType</td>
+                            <td>@LifecycleModel.Label(Model.History[i].From)</td>
+                            <td>@LifecycleModel.Label(Model.History[i].To)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">From state</th>
+            <th scope="col">Action</th>
+            <th scope="col">To state</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <th scope="row">@row.Id</th>
+                <td>@LifecycleModel.Label(row.From)</td>
+                <td>@row.Event</td>
+                <td>@LifecycleModel.Label(row.To)</td>
+            </tr>
+        }
+    </tbody>
+</table>
