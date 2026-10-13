@@ -1,0 +1,15 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1 class="h3 text-danger">Something went wrong</h1>
+<p>We could not complete your request. Please try again, or go back to the <a asp-page="/Index">home page</a>.</p>
+
+@if (Model.ShowRequestId)
+{
+    <p>
+        If the problem continues, quote this reference when you report it: <code>@Model.RequestId</code>
+    </p>
+}
