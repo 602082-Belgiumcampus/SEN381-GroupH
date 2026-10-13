@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CivicConnect.Modules/CivicConnect.Modules.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CivicConnect.Domain.Tests/CivicConnect.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
