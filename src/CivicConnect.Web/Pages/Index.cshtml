@@ -7,8 +7,26 @@
 <div class="text-center">
     <h1 class="display-4">CivicConnect</h1>
     <p class="lead">Service-request management</p>
-    <p>
-        This is an early version of the site. For now you can see the states a request moves through
-    </p>
-    <a class="btn btn-primary" asp-page="/Lifecycle">View the request lifecycle</a>
+
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        <p>Sign in to submit a request or follow one you have already submitted.</p>
+        <a class="btn btn-primary" asp-page="/Account/Login">Sign in</a>
+        <a class="btn btn-outline-primary" asp-page="/Account/Register">Create an account</a>
+    }
+    else
+    {
+        <p>Signed in as @User.Identity.Name.</p>
+        @if (User.IsInRole("Requester"))
+        {
+            <a class="btn btn-primary" asp-page="/Requests/New">Submit a request</a>
+            <a class="btn btn-outline-primary" asp-page="/Requests/Index">My requests</a>
+        }
+        @if (User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management"))
+        {
+            <a class="btn btn-primary" asp-page="/Staff/Index">Open the work queue</a>
+        }
+    }
+
+    <p class="mt-4"><a asp-page="/Lifecycle">See how a request moves through its states</a></p>
 </div>
