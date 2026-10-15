@@ -2,12 +2,23 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CivicConnect.Modules\CivicConnect.Modules.csproj" />
+    <ProjectReference Include="..\CivicConnect.Infrastructure\CivicConnect.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Needed by the dotnet-ef tool (migrations); not shipped with the app -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Local secrets (connection string, demo password) live outside the repository (NFR-003) -->
+    <UserSecretsId>civicconnect-web-sen381-grouph</UserSecretsId>
   </PropertyGroup>
 
 </Project>

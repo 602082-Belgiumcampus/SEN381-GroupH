@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CivicConnect.Infrastructure/CivicConnect.Infrastructure.csproj" />
     <Project Path="src/CivicConnect.Modules/CivicConnect.Modules.csproj" />
     <Project Path="src/CivicConnect.Web/CivicConnect.Web.csproj" />
   </Folder>

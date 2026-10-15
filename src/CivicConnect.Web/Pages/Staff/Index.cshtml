@@ -1,0 +1,18 @@
+@page
+@model CivicConnect.Web.Pages.Staff.IndexModel
+@{
+    ViewData["Title"] = "Work queue";
+}
+
+<h1 class="h3">Work queue</h1>
+<p class="text-muted">Oldest first. Open a request to review it.</p>
+
+@if (Model.Requests.TotalCount == 0)
+{
+    <p>There are no requests for you right now.</p>
+}
+else
+{
+    <partial name="_RequestTable" model="Model.Requests.Items" />
+    <partial name="_Pager" model="Model.Requests" />
+}
