@@ -73,3 +73,6 @@ app.MapRazorPages()
    .WithStaticAssets();
 
 app.Run();
+
+// Lets the integration tests start the app with WebApplicationFactory<Program>
+public partial class Program;

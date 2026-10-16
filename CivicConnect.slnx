@@ -6,5 +6,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CivicConnect.Domain.Tests/CivicConnect.Domain.Tests.csproj" />
+    <Project Path="tests/CivicConnect.Integration.Tests/CivicConnect.Integration.Tests.csproj" />
   </Folder>
 </Solution>
