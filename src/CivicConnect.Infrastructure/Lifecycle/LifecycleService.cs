@@ -35,11 +35,16 @@ public sealed class LifecycleService(CivicConnectDbContext db, TimeProvider time
 
         // Authorise, check the table and validate: all inside the pure engine, in that order.
         var result = LifecycleEngine.Apply(current, command, actor, now);
-        if (!result.Succeeded)
-            return new(Map(result.Outcome), result.Message);
+        if (result.Outcome == TransitionOutcome.Forbidden)
+            return new(LifecycleServiceOutcome.Forbidden, result.Message);
 
+        // A stale page is a conflict even when the move is no longer legal (someone else already
+        // accepted it): "reload and try again" is the useful answer, not "not allowed from Accepted".
         if (request.Version != expectedVersion)
             return new(LifecycleServiceOutcome.Conflict, ConflictMessage);
+
+        if (!result.Succeeded)
+            return new(Map(result.Outcome), result.Message);
 
         if (command.Event == LifecycleEvent.Assign
             && !await IsActiveStaffMemberAsync(command.TargetAssigneeId!.Value, cancellationToken))
