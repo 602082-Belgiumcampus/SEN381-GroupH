@@ -25,10 +25,14 @@ Early development (Milestone 3 in progress)
   - The request lifecycle demo page.
 - `tests/CivicConnect.Domain.Tests`: xUnit tests for TC-LC-01 to TC-LC-16 and the pure parts of
   TC-IN-01 to TC-IN-03, TC-AZ-01 and TC-AZ-05.
+- `tests/CivicConnect.Integration.Tests`: tests against a real PostgreSQL and the running web app for
+  TC-PE-01 to TC-PE-03, TC-AZ-01 to TC-AZ-05 and the database parts of TC-IN-01 to TC-IN-03.
+- CI (`.github/workflows/ci.yml`): build, all tests, vulnerable-package check and secrets scan on every
+  pull request and push to `main` or `development`.
 
 **Not yet implemented:** assign / start / resolve / close in the UI (the engine and service already
-support them), integration tests against PostgreSQL (TC-PE), log on behalf (FR-020), feedback notices,
-reporting, administration pages, CI.
+support them), log on behalf (FR-020, TC-IN-04), feedback notices, reporting, administration pages
+(TC-AZ-06).
 
 ## Prerequisites
 
@@ -80,6 +84,11 @@ dotnet build
 dotnet test
 ```
 
+The integration tests need PostgreSQL. Locally they reuse the connection string from first-time setup
+step 2 and work in a throwaway schema that is dropped afterwards, so your own data is not touched.
+Without a database configured they are skipped. CI starts its own PostgreSQL and passes it in through the
+`CIVICCONNECT_TEST_DB` environment variable.
+
 ## Run the website
 
 ```
@@ -111,5 +120,7 @@ src/CivicConnect.Web/              Razor Pages website
   Pages/Staff/                     work queue
   Security/                        policies and the signed-in user as an Actor
 tests/CivicConnect.Domain.Tests/   pure rule tests (no database)
+tests/CivicConnect.Integration.Tests/  database and web tests (PostgreSQL)
+.github/workflows/ci.yml           CI: build, tests, vulnerable packages, secrets scan
 docker-compose.yml                 local PostgreSQL 18
 ```
