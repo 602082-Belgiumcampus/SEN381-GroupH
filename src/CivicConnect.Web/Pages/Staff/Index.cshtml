@@ -4,6 +4,11 @@
     ViewData["Title"] = "Work queue";
 }
 
+@if (TempData["Flash"] is string flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+
 <h1 class="h3">Work queue</h1>
 <p class="text-muted">Oldest first. Open a request to review it.</p>
 

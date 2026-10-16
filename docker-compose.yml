@@ -9,7 +9,8 @@ services:
       POSTGRES_USER: civicconnect
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
     ports:
-      - "5432:5432"
+      # Only reachable from this machine, not from others on the same network
+      - "127.0.0.1:5432:5432"
     volumes:
       - civicconnect-db:/var/lib/postgresql
 

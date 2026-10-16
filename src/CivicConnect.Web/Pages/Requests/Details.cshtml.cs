@@ -40,13 +40,18 @@ public class DetailsModel(IRequestQueries queries, ILifecycleService lifecycle) 
     private async Task<IActionResult> ApplyAsync(
         Guid id, LifecycleCommand command, string successMessage, CancellationToken cancellationToken)
     {
-        var result = await lifecycle.ApplyAsync(id, Version, command, User.ToActor(), cancellationToken);
+        var actor = User.ToActor();
+        var result = await lifecycle.ApplyAsync(id, Version, command, actor, cancellationToken);
 
         switch (result.Outcome)
         {
             case LifecycleServiceOutcome.Applied:
                 TempData["Flash"] = successMessage;
-                return RedirectToPage(new { id });
+                // The change can take the request out of this user's view (e.g. staff rejecting it),
+                // so go back to the work queue rather than to a page that would now be a 404.
+                return await queries.GetDetailAsync(id, actor, cancellationToken) is null
+                    ? RedirectToPage("/Staff/Index")
+                    : RedirectToPage(new { id });
 
             case LifecycleServiceOutcome.NotFound:
                 return NotFound();
