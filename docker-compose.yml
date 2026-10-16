@@ -1,0 +1,18 @@
+# Local PostgreSQL for development (PED Section 7.1: PostgreSQL 18).
+# Usage: copy .env.example to .env, set a password, then run: docker compose up -d
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: civicconnect
+      POSTGRES_USER: civicconnect
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    ports:
+      # Only reachable from this machine, not from others on the same network
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - civicconnect-db:/var/lib/postgresql
+
+volumes:
+  civicconnect-db:
