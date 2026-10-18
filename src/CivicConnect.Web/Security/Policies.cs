@@ -12,9 +12,18 @@ public static class Policies
 {
     public const string Requester = "Requester";
     public const string StaffQueue = "StaffQueue";
+    public const string LogOnBehalf = "LogOnBehalf";
+    public const string Reports = "Reports";
+    public const string Administrator = "Administrator";
 
     public static readonly string[] StaffQueueRoles =
         [nameof(Role.ServiceStaff), nameof(Role.Supervisor), nameof(Role.Management)];
+
+    /// <summary>FR-020: staff who take requests by phone, email or in person.</summary>
+    public static readonly string[] LogOnBehalfRoles = [nameof(Role.ServiceStaff), nameof(Role.Supervisor)];
+
+    /// <summary>FR-014 to FR-017: "authorised management users" (CL-01).</summary>
+    public static readonly string[] ReportRoles = [nameof(Role.Supervisor), nameof(Role.Management)];
 }
 
 public static class ClaimsPrincipalExtensions
@@ -33,12 +42,45 @@ public static class StatusDisplay
     public static string Label(RequestStatus status) =>
         status == RequestStatus.InProgress ? "In progress" : status.ToString();
 
-    public static string BadgeClass(RequestStatus status) => status switch
+    /// <summary>One colour per kind of state: waiting, being handled, work under way, finished, stopped.</summary>
+    public static string PillClass(RequestStatus status) => status switch
     {
-        RequestStatus.Submitted => "text-bg-secondary",
-        RequestStatus.Accepted or RequestStatus.Assigned or RequestStatus.InProgress => "text-bg-primary",
-        RequestStatus.Resolved or RequestStatus.Closed => "text-bg-success",
-        RequestStatus.Rejected => "text-bg-danger",
-        _ => "text-bg-light"
+        RequestStatus.Submitted => "cc-pill cc-pill--waiting",
+        RequestStatus.Accepted or RequestStatus.Assigned => "cc-pill cc-pill--active",
+        RequestStatus.InProgress => "cc-pill cc-pill--working",
+        RequestStatus.Resolved or RequestStatus.Closed => "cc-pill cc-pill--done",
+        RequestStatus.Rejected => "cc-pill cc-pill--stopped",
+        _ => "cc-pill cc-pill--waiting"
+    };
+
+    /// <summary>The stops on the status track: the normal route, or Submitted then Rejected.</summary>
+    public static IReadOnlyList<RequestStatus> TrackFor(RequestStatus status) =>
+        status == RequestStatus.Rejected
+            ? [RequestStatus.Submitted, RequestStatus.Rejected]
+            : [RequestStatus.Submitted, RequestStatus.Accepted, RequestStatus.Assigned,
+               RequestStatus.InProgress, RequestStatus.Resolved, RequestStatus.Closed];
+
+    /// <summary>How a history entry reads on the request page.</summary>
+    public static string HistoryLabel(string eventType, RequestStatus to) => eventType switch
+    {
+        "Submit" => "Submitted",
+        "LoggedOnBehalf" => "Logged by staff on the requester's behalf",
+        "Start" => "Work started",
+        "Reopen" => "Reopened",
+        "RecordAction" => "Action recorded",
+        _ => Label(to)
+    };
+
+    /// <summary>A short line that says where the request is and what happens next.</summary>
+    public static string Explain(RequestStatus status) => status switch
+    {
+        RequestStatus.Submitted => "Waiting for a staff member to review it.",
+        RequestStatus.Accepted => "Accepted. Waiting to be given to someone to work on.",
+        RequestStatus.Assigned => "Assigned. Work will start soon.",
+        RequestStatus.InProgress => "Work is under way.",
+        RequestStatus.Resolved => "The work is done. Waiting to be closed.",
+        RequestStatus.Closed => "Finished and closed.",
+        RequestStatus.Rejected => "This request was not accepted.",
+        _ => string.Empty
     };
 }

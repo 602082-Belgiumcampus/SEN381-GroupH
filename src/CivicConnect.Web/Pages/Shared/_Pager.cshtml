@@ -1,16 +1,27 @@
-@model PagedResult<RequestSummary>
+@model IPaged
+@{
+    // Keep the current search and filters when moving between pages (FR-008)
+    Dictionary<string, string> RouteFor(int page)
+    {
+        var values = Context.Request.Query
+            .Where(q => !q.Key.Equals("pageNumber", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(q => q.Key, q => q.Value.ToString());
+        values["pageNumber"] = page.ToString();
+        return values;
+    }
+}
 
 @if (Model.PageCount > 1)
 {
-    <nav aria-label="Pages" class="d-flex align-items-center gap-3">
+    <nav aria-label="Pages" class="cc-pager">
         @if (Model.HasPrevious)
         {
-            <a class="btn btn-outline-secondary btn-sm" asp-route-pageNumber="@(Model.Page - 1)">Previous</a>
+            <a class="btn btn-outline-primary btn-sm" asp-all-route-data="RouteFor(Model.Page - 1)">Previous page</a>
         }
         <span>Page @Model.Page of @Model.PageCount</span>
         @if (Model.HasNext)
         {
-            <a class="btn btn-outline-secondary btn-sm" asp-route-pageNumber="@(Model.Page + 1)">Next</a>
+            <a class="btn btn-outline-primary btn-sm" asp-all-route-data="RouteFor(Model.Page + 1)">Next page</a>
         }
     </nav>
 }

@@ -1,0 +1,13 @@
+# Keep build output, local settings and secrets out of the image build context
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/*.user
+.git/
+.github/
+docs/
+tests/
+.env
+**/appsettings.Development.json
+**/secrets.json

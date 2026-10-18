@@ -1,12 +1,11 @@
 @model IReadOnlyList<RequestSummary>
 
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
+<div class="cc-list table-responsive">
+    <table class="table align-middle">
         <thead>
             <tr>
                 <th scope="col">Reference</th>
-                <th scope="col">Title</th>
-                <th scope="col">Category</th>
+                <th scope="col">Request</th>
                 <th scope="col">Status</th>
                 <th scope="col">Submitted</th>
             </tr>
@@ -15,11 +14,19 @@
             @foreach (var request in Model)
             {
                 <tr>
-                    <td><a asp-page="/Requests/Details" asp-route-id="@request.Id">@request.Reference</a></td>
-                    <td>@request.Title</td>
-                    <td>@request.Category</td>
-                    <td><partial name="_StatusBadge" model="request.Status" /></td>
-                    <td><time datetime="@request.CreatedAt.ToString("O")">@request.CreatedAt.ToLocalTime().ToString("d MMM yyyy HH:mm")</time></td>
+                    <td><a class="cc-ref" asp-page="/Requests/Details" asp-route-id="@request.Id">@request.Reference</a></td>
+                    <td>
+                        <div class="cc-list__title">@request.Title</div>
+                        <div class="text-secondary small">@request.Category</div>
+                    </td>
+                    <td>
+                        <partial name="_StatusBadge" model="request.Status" />
+                        @if (request.IsOverdue)
+                        {
+                            <span class="cc-pill cc-pill--overdue">Overdue</span>
+                        }
+                    </td>
+                    <td class="cc-list__date"><time datetime="@request.CreatedAt.ToString("O")">@request.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time></td>
                 </tr>
             }
         </tbody>

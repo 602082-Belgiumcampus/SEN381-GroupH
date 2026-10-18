@@ -1,4 +1,5 @@
 using CivicConnect.Infrastructure.Identity;
+using CivicConnect.Modules.Feedback;
 using CivicConnect.Modules.Lifecycle;
 using CivicConnect.Modules.RequestIntake;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +20,8 @@ public class CivicConnectDbContext(DbContextOptions<CivicConnectDbContext> optio
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<RequestAction> RequestActions => Set<RequestAction>();
+    public DbSet<FeedbackNotice> FeedbackNotices => Set<FeedbackNotice>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -87,6 +90,25 @@ public class CivicConnectDbContext(DbContextOptions<CivicConnectDbContext> optio
             audit.HasOne(a => a.Actor).WithMany().HasForeignKey(a => a.ActorId).OnDelete(DeleteBehavior.Restrict);
 
             audit.HasIndex(a => new { a.RequestId, a.OccurredAt });
+            // FR-017 activity report reads the audit trail by period
+            audit.HasIndex(a => a.OccurredAt);
+        });
+
+        builder.Entity<RequestAction>(action =>
+        {
+            action.Property(a => a.Text).HasMaxLength(RequestActionRules.TextMaxLength).IsRequired();
+            action.HasOne(a => a.Request).WithMany().HasForeignKey(a => a.RequestId).OnDelete(DeleteBehavior.Restrict);
+            action.HasOne(a => a.Author).WithMany().HasForeignKey(a => a.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            action.HasIndex(a => new { a.RequestId, a.CreatedAt });
+        });
+
+        builder.Entity<FeedbackNotice>(notice =>
+        {
+            notice.Property(n => n.Message).HasMaxLength(FeedbackMessages.MessageMaxLength).IsRequired();
+            notice.HasOne(n => n.Request).WithMany().HasForeignKey(n => n.RequestId).OnDelete(DeleteBehavior.Restrict);
+            notice.HasOne(n => n.Recipient).WithMany().HasForeignKey(n => n.RecipientId).OnDelete(DeleteBehavior.Restrict);
+            // "My notices" page and the unread count in the menu
+            notice.HasIndex(n => new { n.RecipientId, n.CreatedAt });
         });
     }
 }

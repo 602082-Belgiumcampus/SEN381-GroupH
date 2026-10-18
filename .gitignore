@@ -484,3 +484,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Database backups contain personal data and password hashes: never commit them
+backups/
+*.dump

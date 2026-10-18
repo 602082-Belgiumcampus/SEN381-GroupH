@@ -1,29 +1,29 @@
-using System.Linq.Expressions;
 using CivicConnect.Infrastructure.Persistence;
 using CivicConnect.Modules.IdentityAccess;
 using CivicConnect.Modules.Lifecycle;
+using CivicConnect.Modules.Reporting;
 using CivicConnect.Modules.RequestQueries;
 using Microsoft.EntityFrameworkCore;
 
 namespace CivicConnect.Infrastructure.RequestQueries;
 
 /// <summary>
-/// Request Queries (FR-004, FR-005, FR-007, FR-009). Read-only and paged (NFR-005).
+/// Request Queries (FR-004, FR-005, FR-007, FR-008, FR-009). Read-only and paged (NFR-005).
 /// The staff queue filter is the database form of <see cref="RequestVisibility"/>;
 /// the detail query applies RequestVisibility itself.
 /// </summary>
-public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQueries
+public sealed class RequestQueryService(CivicConnectDbContext db, TimeProvider time) : IRequestQueries
 {
     public const int MaxPageSize = 100;
 
     public Task<PagedResult<RequestSummary>> GetMyRequestsAsync(
-        Guid requesterId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        Guid requesterId, RequestFilter filter, int page, int pageSize, CancellationToken cancellationToken = default) =>
         PageAsync(
-            db.ServiceRequests.Where(r => r.RequesterId == requesterId).OrderByDescending(r => r.CreatedAt),
+            Apply(db.ServiceRequests.Where(r => r.RequesterId == requesterId), filter),
             page, pageSize, cancellationToken);
 
     public Task<PagedResult<RequestSummary>> GetStaffQueueAsync(
-        Actor actor, int page, int pageSize, CancellationToken cancellationToken = default)
+        Actor actor, RequestFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var requests = db.ServiceRequests.AsQueryable();
 
@@ -43,8 +43,38 @@ public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQuer
             requests = requests.Where(_ => false);
         }
 
-        // Oldest first, so nothing waits forever at the bottom of the queue
-        return PageAsync(requests.OrderBy(r => r.CreatedAt), page, pageSize, cancellationToken);
+        // Visibility is applied first, so search and filters can only narrow what the user may see
+        return PageAsync(Apply(requests, filter), page, pageSize, cancellationToken);
+    }
+
+    /// <summary>FR-008: search, filter and sort. Values come from the query string and are treated as data only.</summary>
+    private static IQueryable<ServiceRequest> Apply(IQueryable<ServiceRequest> requests, RequestFilter filter)
+    {
+        var search = filter.Search?.Trim();
+        if (!string.IsNullOrEmpty(search))
+        {
+            if (search.Length > RequestFilter.SearchMaxLength)
+                search = search[..RequestFilter.SearchMaxLength];
+
+            // Escape LIKE wildcards so "%" or "_" typed by the user match literally
+            var pattern = "%" + search.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            requests = requests.Where(r =>
+                EF.Functions.ILike(r.Reference, pattern, "\\") || EF.Functions.ILike(r.Title, pattern, "\\"));
+        }
+
+        if (filter.Status is RequestStatus status)
+            requests = requests.Where(r => r.Status == status);
+
+        if (filter.CategoryId is Guid categoryId)
+            requests = requests.Where(r => r.CategoryId == categoryId);
+
+        // Id as the final tie-break keeps paging stable when two requests share a timestamp
+        return filter.Sort switch
+        {
+            RequestSort.Newest => requests.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id),
+            RequestSort.RecentlyUpdated => requests.OrderByDescending(r => r.UpdatedAt).ThenByDescending(r => r.Id),
+            _ => requests.OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
+        };
     }
 
     public async Task<RequestDetail?> GetDetailAsync(Guid requestId, Actor actor, CancellationToken cancellationToken = default)
@@ -62,7 +92,9 @@ public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQuer
                 r.AssignedToId,
                 AssignedToName = r.AssignedTo == null ? null : r.AssignedTo.DisplayName,
                 r.RejectionReason, r.ResolutionNote,
-                r.CreatedAt, r.UpdatedAt, r.ClosedAt
+                r.CreatedAt, r.UpdatedAt, r.ClosedAt,
+                r.ContactChannel,
+                LoggedByName = r.LoggedBy == null ? null : r.LoggedBy.DisplayName
             })
             .SingleOrDefaultAsync(cancellationToken);
 
@@ -77,6 +109,13 @@ public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQuer
             .Select(a => new HistoryItem(a.EventType, a.FromStatus, a.ToStatus, a.Actor.DisplayName, a.Detail, a.OccurredAt))
             .ToListAsync(cancellationToken);
 
+        var workLog = await db.RequestActions
+            .AsNoTracking()
+            .Where(a => a.RequestId == requestId)
+            .OrderBy(a => a.CreatedAt).ThenBy(a => a.Id)
+            .Select(a => new WorkLogItem(a.Text, a.Author.DisplayName, a.CreatedAt))
+            .ToListAsync(cancellationToken);
+
         return new RequestDetail(
             request.Id, request.Reference, request.Title, request.Description, request.Location,
             request.Category, request.Status, request.Version,
@@ -84,26 +123,55 @@ public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQuer
             request.AssignedToId, request.AssignedToName,
             request.RejectionReason, request.ResolutionNote,
             request.CreatedAt, request.UpdatedAt, request.ClosedAt,
-            history);
+            history, workLog, request.ContactChannel, request.LoggedByName);
     }
 
-    private static async Task<PagedResult<RequestSummary>> PageAsync(
+    public async Task<IReadOnlyList<StaffOption>> GetAssignableStaffAsync(CancellationToken cancellationToken = default)
+    {
+        // A List (not an array): with C# 14 an array's Contains can bind to a span overload inside queries
+        var staffRoleNames = new List<string> { nameof(Role.ServiceStaff), nameof(Role.Supervisor) };
+
+        var staff = await (from user in db.Users
+                           join userRole in db.UserRoles on user.Id equals userRole.UserId
+                           join role in db.Roles on userRole.RoleId equals role.Id
+                           where user.IsActive && staffRoleNames.Contains(role.Name!)
+                           select new { user.Id, user.DisplayName })
+            .AsNoTracking()
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return staff
+            .OrderBy(s => s.DisplayName)
+            .Select(s => new StaffOption(s.Id, s.DisplayName))
+            .ToList();
+    }
+
+    private async Task<PagedResult<RequestSummary>> PageAsync(
         IQueryable<ServiceRequest> query, int page, int pageSize, CancellationToken cancellationToken)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
         var total = await query.CountAsync(cancellationToken);
-        var items = await query
+        var rows = await query
             .AsNoTracking()
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(ToSummary)
+            .Select(r => new
+            {
+                r.Id, r.Reference, r.Title, Category = r.Category.Name, r.Status, r.CreatedAt,
+                r.Category.TargetResolutionDays
+            })
             .ToListAsync(cancellationToken);
+
+        // Overdue (CR-001) is calculated here, never stored
+        var now = time.GetUtcNow();
+        var items = rows
+            .Select(r => new RequestSummary(
+                r.Id, r.Reference, r.Title, r.Category, r.Status, r.CreatedAt,
+                OverdueRule.IsOverdue(r.Status, r.CreatedAt, r.TargetResolutionDays, now)))
+            .ToList();
 
         return new PagedResult<RequestSummary>(items, page, pageSize, total);
     }
-
-    private static readonly Expression<Func<ServiceRequest, RequestSummary>> ToSummary = r =>
-        new RequestSummary(r.Id, r.Reference, r.Title, r.Category.Name, r.Status, r.CreatedAt);
 }

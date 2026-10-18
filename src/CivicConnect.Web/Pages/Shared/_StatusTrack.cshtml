@@ -1,0 +1,26 @@
+@model RequestStatus
+@{
+    var stops = StatusDisplay.TrackFor(Model);
+    var currentIndex = stops.ToList().IndexOf(Model);
+    var tone = Model switch
+    {
+        RequestStatus.InProgress => "cc-track__stop--working",
+        RequestStatus.Resolved or RequestStatus.Closed => "cc-track__stop--finished",
+        RequestStatus.Rejected => "cc-track__stop--rejected",
+        _ => string.Empty
+    };
+}
+<ol class="cc-track @(Model == RequestStatus.Rejected ? "cc-track--stopped" : "")" aria-label="Progress of this request">
+    @for (var i = 0; i < stops.Count; i++)
+    {
+        var state = i < currentIndex ? "cc-track__stop--done" : i == currentIndex ? $"cc-track__stop--current {tone}" : "cc-track__stop--todo";
+        <li class="cc-track__stop @state" aria-current="@(i == currentIndex ? "step" : null)">
+            <span class="cc-track__dot" aria-hidden="true"></span>
+            <span class="cc-track__label">
+                @StatusDisplay.Label(stops[i])
+                @if (i < currentIndex) { <span class="visually-hidden">(done)</span> }
+                @if (i == currentIndex) { <span class="visually-hidden">(current)</span> }
+            </span>
+        </li>
+    }
+</ol>

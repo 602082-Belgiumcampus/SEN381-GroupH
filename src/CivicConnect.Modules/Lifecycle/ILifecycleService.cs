@@ -34,4 +34,14 @@ public interface ILifecycleService
         LifecycleCommand command,
         Actor actor,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// FR-012: adds a work-log entry to a request. The status does not change; the action and its
+    /// audit entry are saved together. Uses the same outcomes as a transition.
+    /// </summary>
+    Task<LifecycleServiceResult> RecordActionAsync(
+        Guid requestId,
+        string? text,
+        Actor actor,
+        CancellationToken cancellationToken = default);
 }

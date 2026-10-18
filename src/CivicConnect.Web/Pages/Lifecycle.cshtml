@@ -2,51 +2,27 @@
 @using CivicConnect.Modules.Lifecycle
 @model LifecycleModel
 @{
-    ViewData["Title"] = "Request lifecycle";
-
-    string BadgeClass(RequestStatus status) =>
-        status == Model.Current.Status ? "text-bg-primary"
-        : Model.HasPassed(status) ? "text-bg-success"
-        : "text-bg-light border";
-
-    string StateNote(RequestStatus status) =>
-        status == Model.Current.Status ? " (current)"
-        : Model.HasPassed(status) ? " (done)"
-        : string.Empty;
+    ViewData["Title"] = "How requests move";
 }
 
-<h1 class="h3">Request lifecycle</h1>
-<p>
-    A request moves through these states. Only the moves listed below are allowed and anything else is
-    refused
-</p>
+<div class="cc-page-head">
+    <div>
+        <h1>How requests move</h1>
+        <p class="cc-lead">Every request follows these steps. Only the moves in the table below are allowed; anything else is refused.</p>
+    </div>
+</div>
 
-<section class="card mb-4" aria-labelledby="mock-heading">
-    <div class="card-body">
-        <h2 class="h5" id="mock-heading">Example request</h2>
-        <p class="text-muted">
-            These buttons allow you to move through the request stages
-        </p>
+<section class="cc-panel mb-4" aria-labelledby="mock-heading">
+        <h2 id="mock-heading">Try it with an example request</h2>
+        <p class="text-secondary">Use the buttons to move the example through its steps.</p>
 
         @if (Model.Refusal is not null)
         {
             <div class="alert alert-warning" role="alert">@Model.Refusal</div>
         }
 
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-            @foreach (var status in Enum.GetValues<RequestStatus>().Where(s => s != RequestStatus.Rejected))
-            {
-                if (status != RequestStatus.Submitted)
-                {
-                    <span aria-hidden="true">&rarr;</span>
-                }
-                <span class="badge rounded-pill fs-6 @BadgeClass(status)">@LifecycleModel.Label(status)<span class="visually-hidden">@StateNote(status)</span></span>
-            }
-        </div>
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-            <span class="text-muted">or, from Submitted</span>
-            <span aria-hidden="true">&rarr;</span>
-            <span class="badge rounded-pill fs-6 @BadgeClass(RequestStatus.Rejected)">@LifecycleModel.Label(RequestStatus.Rejected)<span class="visually-hidden">@StateNote(RequestStatus.Rejected)</span></span>
+        <div class="cc-track-panel px-0">
+            <partial name="_StatusTrack" model="Model.Current.Status" />
         </div>
 
         <p>
@@ -74,7 +50,7 @@
 
         @if (Model.History.Count > 0)
         {
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0 mt-3">
                 <caption>What has happened to the mock request so far</caption>
                 <thead>
                     <tr>
@@ -97,10 +73,11 @@
                 </tbody>
             </table>
         }
-    </div>
 </section>
 
-<table class="table table-striped align-middle">
+<h2 class="mt-2">Allowed moves</h2>
+<div class="cc-list table-responsive">
+<table class="table align-middle">
     <thead>
         <tr>
             <th scope="col">ID</th>
@@ -121,3 +98,4 @@
         }
     </tbody>
 </table>
+</div>

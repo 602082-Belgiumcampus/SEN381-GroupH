@@ -1,15 +1,17 @@
 @page
 @model ErrorModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = "Something went wrong";
 }
 
-<h1 class="h3 text-danger">Something went wrong</h1>
-<p>We could not complete your request. Please try again, or go back to the <a asp-page="/Index">home page</a>.</p>
+<div class="cc-auth">
+    <div class="cc-panel">
+        <h1>Something went wrong</h1>
+        <p class="cc-lead">That didn't work. Try again, or go back to the <a asp-page="/Index">home page</a>.</p>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        If the problem continues, quote this reference when you report it: <code>@Model.RequestId</code>
-    </p>
-}
+        @if (Model.ShowRequestId)
+        {
+            <p class="mb-0">If it keeps happening, quote this reference when you report it: <code>@Model.RequestId</code></p>
+        }
+    </div>
+</div>

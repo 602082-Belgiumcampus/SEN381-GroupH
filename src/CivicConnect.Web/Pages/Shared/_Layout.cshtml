@@ -1,83 +1,136 @@
-﻿<!DOCTYPE html>
+@inject CivicConnect.Modules.Feedback.IFeedbackNotices Notices
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - CivicConnect</title>
     <script type="importmap"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600..800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/CivicConnect.Web.styles.css" asp-append-version="true" />
 </head>
+@{
+    var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    string Active(string page) => currentPage.Equals(page, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+    string? Current(string page) => currentPage.Equals(page, StringComparison.OrdinalIgnoreCase) ? "page" : null;
+    var isStaff = User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management");
+    var canLogOnBehalf = User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor");
+    var canSeeReports = User.IsInRole("Supervisor") || User.IsInRole("Management");
+    var isAdmin = User.IsInRole("Administrator");
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var unreadNotices = 0;
+    if (signedIn)
+    {
+        // The menu must still render (e.g. on the error page) if the database is unreachable
+        try { unreadNotices = await Notices.CountUnreadAsync(User.GetUserId()); }
+        catch (Exception) { unreadNotices = 0; }
+    }
+}
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+    <header class="cc-header">
+        <nav class="navbar navbar-expand-md" aria-label="Main">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">CivicConnect</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <a class="cc-brand" asp-page="/Index">
+                    <svg class="cc-brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+                        <rect width="32" height="32" rx="8" fill="#ffffff" />
+                        <path d="M7 21 H25" stroke="#5a3ea6" stroke-width="3" stroke-linecap="round" />
+                        <circle cx="8" cy="21" r="3.2" fill="#5a3ea6" />
+                        <circle cx="16" cy="21" r="3.2" fill="#5a3ea6" />
+                        <circle cx="24" cy="21" r="3.2" fill="#ffffff" stroke="#e8a317" stroke-width="2.4" />
+                        <path d="M16 7 v7" stroke="#2a1f4d" stroke-width="3" stroke-linecap="round" />
+                        <path d="M16 7 l6 2.5 -6 2.5" fill="#e8a317" />
+                    </svg>
+                    CivicConnect
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cc-nav"
+                        aria-controls="cc-nav" aria-expanded="false" aria-label="Show menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
+                <div class="collapse navbar-collapse" id="cc-nav">
+                    <ul class="navbar-nav ms-md-4 me-auto gap-1">
                         @if (User.IsInRole("Requester"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Requests/Index">My requests</a>
+                                <a class="nav-link @Active("/Requests/Index")" aria-current="@Current("/Requests/Index")" asp-page="/Requests/Index">My requests</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Requests/New">Submit a request</a>
+                                <a class="nav-link @Active("/Requests/New")" aria-current="@Current("/Requests/New")" asp-page="/Requests/New">Submit a request</a>
                             </li>
                         }
-                        @if (User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management"))
+                        @if (isStaff)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Staff/Index">Work queue</a>
+                                <a class="nav-link @Active("/Staff/Index")" aria-current="@Current("/Staff/Index")" asp-page="/Staff/Index">Work queue</a>
+                            </li>
+                        }
+                        @if (canLogOnBehalf)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Staff/LogRequest")" aria-current="@Current("/Staff/LogRequest")" asp-page="/Staff/LogRequest">Log a request</a>
+                            </li>
+                        }
+                        @if (canSeeReports)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Reports/Index")" aria-current="@Current("/Reports/Index")" asp-page="/Reports/Index">Reports</a>
+                            </li>
+                        }
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Admin/Users/Index")" aria-current="@Current("/Admin/Users/Index")" asp-page="/Admin/Users/Index">Users</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Admin/Categories/Index")" aria-current="@Current("/Admin/Categories/Index")" asp-page="/Admin/Categories/Index">Categories</a>
+                            </li>
+                        }
+                        @if (signedIn)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Notices")" aria-current="@Current("/Notices")" asp-page="/Notices">
+                                    Notices
+                                    @if (unreadNotices > 0)
+                                    {
+                                        <span class="cc-count-badge">@unreadNotices<span class="visually-hidden"> unread</span></span>
+                                    }
+                                </a>
                             </li>
                         }
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Lifecycle">Request lifecycle</a>
+                            <a class="nav-link @Active("/Lifecycle")" aria-current="@Current("/Lifecycle")" asp-page="/Lifecycle">How requests move</a>
                         </li>
                     </ul>
-                    <ul class="navbar-nav">
+                    <div class="d-flex align-items-center gap-2 mt-3 mt-md-0">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item">
-                                <span class="navbar-text text-dark me-2">@User.Identity.Name</span>
-                            </li>
-                            <li class="nav-item">
-                                <form method="post" asp-page="/Account/Logout" class="d-inline">
-                                    <button type="submit" class="btn btn-link nav-link text-dark">Sign out</button>
-                                </form>
-                            </li>
+                            <span class="cc-user">@User.Identity.Name</span>
+                            <form method="post" asp-page="/Account/Logout" class="m-0">
+                                <button type="submit" class="cc-signout">Sign out</button>
+                            </form>
                         }
                         else
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Login">Sign in</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Register">Create account</a>
-                            </li>
+                            <a class="nav-link @Active("/Account/Login")" asp-page="/Account/Login">Sign in</a>
+                            <a class="nav-link @Active("/Account/Register")" asp-page="/Account/Register">Create account</a>
                         }
-                    </ul>
+                    </div>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
+    <main role="main" class="cc-page">
         <div class="container">
-            &copy; 2026 - CivicConnect
+            @RenderBody()
         </div>
+    </main>
+
+    <footer class="cc-footer">
+        <div class="container">CivicConnect, SEN381 Group H, 2026</div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

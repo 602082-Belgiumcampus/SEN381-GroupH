@@ -9,15 +9,36 @@
     <div class="alert alert-success" role="status">@flash</div>
 }
 
-<h1 class="h3">Work queue</h1>
-<p class="text-muted">Oldest first. Open a request to review it.</p>
+<div class="cc-page-head">
+    <div>
+        <h1>Work queue</h1>
+        <p class="cc-lead">Oldest first, so nothing waits too long. Open a request to take the next step.</p>
+    </div>
+    @if (Model.CanLogOnBehalf)
+    {
+        <a asp-page="/Staff/LogRequest" class="btn btn-primary">Log a request for someone</a>
+    }
+</div>
+
+<partial name="_RequestFilters" model="Model.Filters" />
 
 @if (Model.Requests.TotalCount == 0)
 {
-    <p>There are no requests for you right now.</p>
+    <div class="cc-empty">
+        @if (Model.Filters.IsFiltered)
+        {
+            <p>No requests match your search. Try fewer filters.</p>
+            <a class="btn btn-outline-primary" asp-page="/Staff/Index">Show the whole queue</a>
+        }
+        else
+        {
+            <p>Nothing is waiting for you right now. New requests will appear here.</p>
+        }
+    </div>
 }
 else
 {
+    <p class="cc-count" role="status">@Model.Requests.TotalCount @(Model.Requests.TotalCount == 1 ? "request" : "requests")</p>
     <partial name="_RequestTable" model="Model.Requests.Items" />
     <partial name="_Pager" model="Model.Requests" />
 }
