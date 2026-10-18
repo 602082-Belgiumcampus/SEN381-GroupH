@@ -1,0 +1,80 @@
+@page
+@model CivicConnect.Web.Pages.Admin.Users.IndexModel
+@{
+    ViewData["Title"] = "Users";
+}
+
+@if (TempData["Flash"] is string flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+
+<div class="cc-page-head">
+    <div>
+        <h1>Users</h1>
+        <p class="cc-lead">Create staff accounts, change roles and deactivate accounts. Accounts are never deleted.</p>
+    </div>
+    <a asp-page="/Admin/Users/New" class="btn btn-primary">Create a user</a>
+</div>
+
+<form method="get" class="cc-filters" role="search" aria-label="Search users">
+    <div class="cc-filters__search">
+        <label for="user-search" class="form-label">Search</label>
+        <input id="user-search" name="Search" value="@Model.Search" type="search" class="form-control" placeholder="Name or email" />
+    </div>
+    <div class="cc-filters__buttons">
+        <button type="submit" class="btn btn-primary">Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a class="btn btn-link" asp-page="/Admin/Users/Index">Clear</a>
+        }
+    </div>
+</form>
+
+@if (Model.Users.TotalCount == 0)
+{
+    <div class="cc-empty"><p>No users match that search.</p></div>
+}
+else
+{
+    <div class="cc-list table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Roles</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users.Items)
+                {
+                    <tr>
+                        <td>
+                            <div class="cc-list__title">@user.DisplayName</div>
+                            <div class="text-secondary small">@user.Email</div>
+                        </td>
+                        <td>@string.Join(", ", user.Roles)</td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <span class="cc-pill cc-pill--done">Active</span>
+                            }
+                            else
+                            {
+                                <span class="cc-pill cc-pill--stopped">Deactivated</span>
+                            }
+                            @if (!user.HasPassword)
+                            {
+                                <span class="cc-pill cc-pill--waiting" title="Created by staff; the person has not registered yet">No password yet</span>
+                            }
+                        </td>
+                        <td class="text-end"><a asp-page="/Admin/Users/Edit" asp-route-id="@user.Id">Manage<span class="visually-hidden"> @user.DisplayName</span></a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.Users" />
+}

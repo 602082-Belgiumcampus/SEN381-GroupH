@@ -19,7 +19,13 @@
                         <div class="cc-list__title">@request.Title</div>
                         <div class="text-secondary small">@request.Category</div>
                     </td>
-                    <td><partial name="_StatusBadge" model="request.Status" /></td>
+                    <td>
+                        <partial name="_StatusBadge" model="request.Status" />
+                        @if (request.IsOverdue)
+                        {
+                            <span class="cc-pill cc-pill--overdue">Overdue</span>
+                        }
+                    </td>
                     <td class="cc-list__date"><time datetime="@request.CreatedAt.ToString("O")">@request.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time></td>
                 </tr>
             }

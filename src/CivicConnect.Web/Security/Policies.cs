@@ -12,9 +12,18 @@ public static class Policies
 {
     public const string Requester = "Requester";
     public const string StaffQueue = "StaffQueue";
+    public const string LogOnBehalf = "LogOnBehalf";
+    public const string Reports = "Reports";
+    public const string Administrator = "Administrator";
 
     public static readonly string[] StaffQueueRoles =
         [nameof(Role.ServiceStaff), nameof(Role.Supervisor), nameof(Role.Management)];
+
+    /// <summary>FR-020: staff who take requests by phone, email or in person.</summary>
+    public static readonly string[] LogOnBehalfRoles = [nameof(Role.ServiceStaff), nameof(Role.Supervisor)];
+
+    /// <summary>FR-014 to FR-017: "authorised management users" (CL-01).</summary>
+    public static readonly string[] ReportRoles = [nameof(Role.Supervisor), nameof(Role.Management)];
 }
 
 public static class ClaimsPrincipalExtensions
@@ -50,6 +59,17 @@ public static class StatusDisplay
             ? [RequestStatus.Submitted, RequestStatus.Rejected]
             : [RequestStatus.Submitted, RequestStatus.Accepted, RequestStatus.Assigned,
                RequestStatus.InProgress, RequestStatus.Resolved, RequestStatus.Closed];
+
+    /// <summary>How a history entry reads on the request page.</summary>
+    public static string HistoryLabel(string eventType, RequestStatus to) => eventType switch
+    {
+        "Submit" => "Submitted",
+        "LoggedOnBehalf" => "Logged by staff on the requester's behalf",
+        "Start" => "Work started",
+        "Reopen" => "Reopened",
+        "RecordAction" => "Action recorded",
+        _ => Label(to)
+    };
 
     /// <summary>A short line that says where the request is and what happens next.</summary>
     public static string Explain(RequestStatus status) => status switch

@@ -221,9 +221,49 @@ public class LifecycleEngineTests
 
 
     [Fact]
-    public void Table_contains_exactly_the_six_transitions_T1_to_T6()
+    public void Table_contains_exactly_the_seven_transitions_T1_to_T7()
     {
-        Assert.Equal(6, LifecycleTable.All.Count);
+        Assert.Equal(7, LifecycleTable.All.Count);
+    }
+
+    // T7 Reopen (OD-05: supervisors only, with a reason)
+
+    [Fact]
+    public void Supervisor_reopens_Resolved_request_with_reason_back_to_InProgress()
+    {
+        var before = State(RequestStatus.Resolved, StaffAId) with { ResolutionNote = "Replaced the bulb." };
+
+        var result = LifecycleEngine.Apply(before, new(LifecycleEvent.Reopen, Reason: "Light failed again"), Supervisor(), Now);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(RequestStatus.InProgress, result.State.Status);
+        Assert.Equal(StaffAId, result.State.AssignedToId);
+        Assert.Null(result.State.ResolutionNote);
+        Assert.Equal("Light failed again", result.Audit!.Detail);
+    }
+
+    [Fact]
+    public void Assignee_cannot_reopen_a_Resolved_request()
+    {
+        var before = State(RequestStatus.Resolved, StaffAId);
+        var result = LifecycleEngine.Apply(before, new(LifecycleEvent.Reopen, Reason: "Not fixed"), Staff(StaffAId), Now);
+        AssertRejectedUnchanged(result, before, TransitionOutcome.Forbidden);
+    }
+
+    [Fact]
+    public void Reopen_without_reason_fails_validation()
+    {
+        var before = State(RequestStatus.Resolved, StaffAId);
+        var result = LifecycleEngine.Apply(before, new(LifecycleEvent.Reopen, Reason: "  "), Supervisor(), Now);
+        AssertRejectedUnchanged(result, before, TransitionOutcome.ValidationFailed);
+    }
+
+    [Fact]
+    public void Closed_request_cannot_be_reopened()
+    {
+        var before = State(RequestStatus.Closed, StaffAId);
+        var result = LifecycleEngine.Apply(before, new(LifecycleEvent.Reopen, Reason: "Not fixed"), Supervisor(), Now);
+        AssertRejectedUnchanged(result, before, TransitionOutcome.InvalidTransition);
     }
 
     [Theory]

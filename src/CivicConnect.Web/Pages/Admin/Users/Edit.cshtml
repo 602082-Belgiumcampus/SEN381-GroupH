@@ -1,0 +1,76 @@
+@page "{id:guid}"
+@model CivicConnect.Web.Pages.Admin.Users.EditModel
+@using CivicConnect.Modules.IdentityAccess
+@{
+    var account = Model.UserAccount;
+    ViewData["Title"] = account.DisplayName;
+}
+
+@if (TempData["Flash"] is string flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+
+<div class="cc-page-head">
+    <div>
+        <h1>@account.DisplayName</h1>
+        <p class="cc-lead">@account.Email · account created @account.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
+    </div>
+    <a asp-page="/Admin/Users/Index" class="btn btn-link">Back to users</a>
+</div>
+
+<div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <section class="cc-panel h-100" aria-labelledby="roles-heading">
+            <h2 id="roles-heading">Roles</h2>
+            <form method="post" asp-page-handler="Roles" asp-route-id="@account.Id">
+                <fieldset>
+                    <legend class="visually-hidden">Roles for @account.DisplayName</legend>
+                    @foreach (var role in Enum.GetValues<Role>())
+                    {
+                        var inputId = $"role-{role}";
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="Roles" value="@role" id="@inputId" checked="@Model.Roles.Contains(role)" />
+                            <label class="form-check-label" for="@inputId">@role</label>
+                        </div>
+                    }
+                </fieldset>
+                <button type="submit" class="btn btn-primary mt-2">Save roles</button>
+            </form>
+        </section>
+    </div>
+
+    <div class="col-lg-6">
+        <section class="cc-panel h-100" aria-labelledby="status-heading">
+            <h2 id="status-heading">Account status</h2>
+            @if (account.IsActive)
+            {
+                <p><span class="cc-pill cc-pill--done">Active</span></p>
+                @if (Model.IsSelf)
+                {
+                    <p class="cc-waiting mb-0">You cannot deactivate your own account.</p>
+                }
+                else
+                {
+                    <p>Deactivating signs the person out and stops them signing in. Their requests and history are kept.</p>
+                    <form method="post" asp-page-handler="Deactivate" asp-route-id="@account.Id">
+                        <button type="submit" class="btn btn-outline-danger">Deactivate account</button>
+                    </form>
+                }
+            }
+            else
+            {
+                <p><span class="cc-pill cc-pill--stopped">Deactivated</span></p>
+                <form method="post" asp-page-handler="Reactivate" asp-route-id="@account.Id">
+                    <button type="submit" class="btn btn-primary">Reactivate account</button>
+                </form>
+            }
+            @if (!account.HasPassword)
+            {
+                <p class="form-text mt-3 mb-0">This account was created when staff logged a request for this person. It has no password until they register with this email.</p>
+            }
+        </section>
+    </div>
+</div>

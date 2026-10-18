@@ -1,4 +1,5 @@
 using CivicConnect.Infrastructure.Persistence;
+using CivicConnect.Modules.Feedback;
 using CivicConnect.Modules.IdentityAccess;
 using CivicConnect.Modules.Lifecycle;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,18 @@ public sealed class LifecycleService(CivicConnectDbContext db, TimeProvider time
             OccurredAt = audit.OccurredAt
         });
 
+        // FR-006: the notice is part of the same save, so it exists if and only if the change does
+        if (FeedbackMessages.ForTransition(command.Event, request.Reference, audit.Detail) is string message)
+        {
+            db.FeedbackNotices.Add(new FeedbackNotice
+            {
+                RequestId = request.Id,
+                RecipientId = request.RequesterId,
+                Message = message,
+                CreatedAt = now
+            });
+        }
+
         try
         {
             // The UPDATE only matches if Version is still the value we read; otherwise nothing is saved.
@@ -83,6 +96,61 @@ public sealed class LifecycleService(CivicConnectDbContext db, TimeProvider time
         }
 
         return new(LifecycleServiceOutcome.Applied, null, updated.Version);
+    }
+
+    public async Task<LifecycleServiceResult> RecordActionAsync(
+        Guid requestId, string? text, Actor actor, CancellationToken cancellationToken = default)
+    {
+        var request = await db.ServiceRequests.SingleOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+
+        if (request is null
+            || !RequestVisibility.CanView(actor, new RequestAccessFacts(request.RequesterId, request.AssignedToId, request.Status)))
+            return new(LifecycleServiceOutcome.NotFound, "Request not found.");
+
+        // Authorise first, as for transitions, then validate
+        var state = new RequestState(request.Status, request.AssignedToId, request.Version);
+        if (!RequestActionRules.CanRecord(actor, state))
+            return new(LifecycleServiceOutcome.Forbidden, "Only the assigned staff member or a supervisor can record actions while the work is open.");
+
+        if (RequestActionRules.Validate(text) is string error)
+            return new(LifecycleServiceOutcome.ValidationFailed, error);
+
+        var now = time.GetUtcNow();
+        var trimmed = text!.Trim();
+
+        db.RequestActions.Add(new RequestAction
+        {
+            RequestId = request.Id,
+            AuthorId = actor.UserId,
+            Text = trimmed,
+            CreatedAt = now
+        });
+
+        // FR-019: recording an action is a significant action, so it is audited; the status does not change
+        db.AuditEntries.Add(new AuditEntry
+        {
+            RequestId = request.Id,
+            ActorId = actor.UserId,
+            EventType = "RecordAction",
+            FromStatus = request.Status,
+            ToStatus = request.Status,
+            Detail = trimmed.Length > 200 ? trimmed[..199] + "…" : trimmed,
+            OccurredAt = now
+        });
+
+        request.UpdatedAt = now;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The request's status changed while the action was being typed
+            db.ChangeTracker.Clear();
+            return new(LifecycleServiceOutcome.Conflict, ConflictMessage);
+        }
+
+        return new(LifecycleServiceOutcome.Applied, null, request.Version);
     }
 
     private Task<bool> IsActiveStaffMemberAsync(Guid userId, CancellationToken cancellationToken)

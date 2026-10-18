@@ -1,7 +1,8 @@
 namespace CivicConnect.Modules.Lifecycle;
 
 // The table-driven finite-state machine
-// Reopening a Resolved request is not included yet
+// T7 Reopen (OD-05, decided M4): a supervisor may send a Resolved request back to In Progress.
+// Closed stays final.
 
 public static class LifecycleTable
 {
@@ -12,7 +13,8 @@ public static class LifecycleTable
         [(RequestStatus.Accepted,  LifecycleEvent.Assign)]  = RequestStatus.Assigned,
         [(RequestStatus.Assigned,  LifecycleEvent.Start)]   = RequestStatus.InProgress,
         [(RequestStatus.InProgress, LifecycleEvent.Resolve)] = RequestStatus.Resolved,
-        [(RequestStatus.Resolved,  LifecycleEvent.Close)]   = RequestStatus.Closed
+        [(RequestStatus.Resolved,  LifecycleEvent.Close)]   = RequestStatus.Closed,
+        [(RequestStatus.Resolved,  LifecycleEvent.Reopen)]  = RequestStatus.InProgress
     };
 
     // Read-only view of the table for tests and documentation

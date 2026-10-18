@@ -1,0 +1,44 @@
+@page
+@model CivicConnect.Web.Pages.NoticesModel
+@{
+    ViewData["Title"] = "Notices";
+}
+
+<div class="cc-page-head">
+    <div>
+        <h1>Notices</h1>
+        <p class="cc-lead">Updates about your requests, newest first.</p>
+    </div>
+    @if (Model.HasUnread)
+    {
+        <form method="post" asp-page-handler="MarkAllRead" class="m-0">
+            <button type="submit" class="btn btn-outline-primary">Mark all as read</button>
+        </form>
+    }
+</div>
+
+@if (Model.Notices.TotalCount == 0)
+{
+    <div class="cc-empty">
+        <p>No notices yet. You'll get one when a request of yours is accepted, rejected, updated or resolved.</p>
+    </div>
+}
+else
+{
+    <ol class="cc-notices">
+        @foreach (var notice in Model.Notices.Items)
+        {
+            <li class="@(notice.IsRead ? "" : "cc-notices__unread")">
+                @if (!notice.IsRead)
+                {
+                    <span class="cc-pill cc-pill--active">New</span>
+                }
+                <a asp-page="/Requests/Details" asp-route-id="@notice.RequestId">@notice.Message</a>
+                <div class="cc-history__who">
+                    <time datetime="@notice.CreatedAt.ToString("O")">@notice.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time>
+                </div>
+            </li>
+        }
+    </ol>
+    <partial name="_Pager" model="Model.Notices" />
+}

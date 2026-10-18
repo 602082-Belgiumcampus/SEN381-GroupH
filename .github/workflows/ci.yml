@@ -79,3 +79,57 @@ jobs:
 
       - name: Scan for committed secrets
         run: ./gitleaks git . --redact --verbose
+
+  container:
+    name: Container image
+    runs-on: ubuntu-latest
+
+    # Proves the staging image works end to end: build it, apply the migration bundle to an empty
+    # database (D-015), start the app and check it reports healthy and serves the sign-in page.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: civicconnect_container
+          POSTGRES_USER: civicconnect
+          POSTGRES_PASSWORD: ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U civicconnect"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB: Host=localhost;Port=5432;Database=civicconnect_container;Username=civicconnect;Password=ci-only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t civicconnect:ci .
+
+      - name: Apply migrations with the bundle
+        run: docker run --rm --network host -e "ConnectionStrings__CivicConnect=$DB" --entrypoint ./efbundle civicconnect:ci
+
+      - name: Start the app
+        run: |
+          docker run -d --name app --network host \
+            -e "ConnectionStrings__CivicConnect=$DB" \
+            -e "Seed__AdminEmail=admin@ci.local" \
+            -e "Seed__AdminPassword=Ci-only-admin-1" \
+            civicconnect:ci
+
+      - name: Health check and sign-in page
+        run: |
+          for i in $(seq 1 30); do
+            if [ "$(curl -s http://localhost:8080/health)" = "Healthy" ]; then break; fi
+            sleep 2
+          done
+          test "$(curl -s http://localhost:8080/health)" = "Healthy"
+          curl -sf http://localhost:8080/Account/Login | grep -q "Sign in"
+
+      - name: App logs
+        if: always()
+        run: docker logs app || true

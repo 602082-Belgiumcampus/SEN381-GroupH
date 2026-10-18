@@ -316,7 +316,8 @@ a { text-underline-offset: 0.18em; }
 .cc-pill--waiting { background: #ebeaf1; color: var(--cc-ink-soft); }
 .cc-pill--active { background: var(--cc-jacaranda-wash); color: var(--cc-jacaranda); }
 .cc-pill--working { background: var(--cc-signal-wash); color: #8a5c00; }
-.cc-pill--done { background: var(--cc-done-wash); color: var(--cc-done); }
+/* Slightly darker than --cc-done: 5.0:1 on the wash (WCAG AA needs 4.5:1; --cc-done gave 4.3:1) */
+.cc-pill--done { background: var(--cc-done-wash); color: #1a7350; }
 .cc-pill--stopped { background: var(--cc-stop-wash); color: var(--cc-stop); }
 
 /* ---------- Status track (the signature element) ---------- */
@@ -703,3 +704,99 @@ a { text-underline-offset: 0.18em; }
 
 /* An empty validation summary should not show as an empty alert box */
 .validation-summary-valid { display: none; }
+
+/* ---------- M4: filters, counts, notices, work log, reports ---------- */
+
+/* Search and filter bar (FR-008); also used for report periods */
+.cc-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.9rem 1rem;
+  align-items: end;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-line);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.cc-filters__search { grid-column: span 2; }
+
+.cc-filters__buttons { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+@media (max-width: 575.98px) {
+  .cc-filters__search { grid-column: auto; }
+}
+
+.cc-count { color: var(--cc-muted); font-size: 0.95rem; margin: 0 0 0.6rem; }
+
+/* Overdue flag beside the status (CR-001); text, not colour alone */
+.cc-pill--overdue { background: var(--cc-stop-wash); color: var(--cc-stop); margin-left: 0.3rem; }
+
+/* Unread notices in the menu */
+.cc-count-badge {
+  display: inline-block;
+  min-width: 1.4rem;
+  padding: 0 0.4rem;
+  margin-left: 0.25rem;
+  border-radius: 999px;
+  background: var(--cc-signal);
+  color: var(--cc-jacaranda-deep);
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.4rem;
+  text-align: center;
+}
+
+/* Notices list (FR-006) */
+.cc-notices { list-style: none; margin: 0; padding: 0; }
+
+.cc-notices li {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-line);
+  border-radius: 0.6rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.6rem;
+}
+
+.cc-notices li a { color: var(--cc-ink); text-decoration-color: var(--cc-line); }
+
+.cc-notices__unread { border-left: 4px solid var(--cc-jacaranda) !important; }
+
+.cc-notices__unread a { font-weight: 700; }
+
+/* Work log entries (FR-012) */
+.cc-worklog__text { white-space: pre-line; }
+
+/* Report totals (FR-014, FR-015) */
+.cc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+}
+
+.cc-stat {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-line);
+  border-radius: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cc-stat__value {
+  font-family: var(--cc-font-head);
+  font-stretch: 112%;
+  font-weight: 800;
+  font-size: 2.1rem;
+  line-height: 1.1;
+  color: var(--cc-jacaranda-deep);
+}
+
+.cc-stat__value--small { font-size: 1.35rem; }
+
+.cc-stat__label { color: var(--cc-muted); font-weight: 700; font-size: 0.9rem; }
+
+.cc-stat--alert { border-color: var(--cc-stop); }
+
+.cc-stat--alert .cc-stat__value { color: var(--cc-stop); }

@@ -43,9 +43,16 @@ public static class LifecycleEngine
                 break;
             case LifecycleEvent.Resolve:
                 updated = updated with { ResolutionNote = command.Note!.Trim() };
+                // Kept in the audit trail too, so a later reopen does not lose what was done
+                detail = updated.ResolutionNote;
                 break;
             case LifecycleEvent.Close:
                 updated = updated with { ClosedAt = now };
+                break;
+            case LifecycleEvent.Reopen:
+                // The old resolution no longer applies; the assignee stays the same
+                updated = updated with { ResolutionNote = null };
+                detail = command.Reason!.Trim();
                 break;
         }
 
@@ -57,6 +64,7 @@ public static class LifecycleEngine
     {
         LifecycleEvent.Reject when string.IsNullOrWhiteSpace(command.Reason) => "A reason is required to reject a request.",
         LifecycleEvent.Resolve when string.IsNullOrWhiteSpace(command.Note) => "A resolution note is required to resolve a request.",
+        LifecycleEvent.Reopen when string.IsNullOrWhiteSpace(command.Reason) => "A reason is required to reopen a request.",
         LifecycleEvent.Assign when command.TargetAssigneeId is null => "An assignee is required.",
         _ => null
     };

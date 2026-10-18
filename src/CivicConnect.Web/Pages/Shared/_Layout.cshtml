@@ -1,3 +1,4 @@
+@inject CivicConnect.Modules.Feedback.IFeedbackNotices Notices
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,6 +18,17 @@
     string Active(string page) => currentPage.Equals(page, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
     string? Current(string page) => currentPage.Equals(page, StringComparison.OrdinalIgnoreCase) ? "page" : null;
     var isStaff = User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management");
+    var canLogOnBehalf = User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor");
+    var canSeeReports = User.IsInRole("Supervisor") || User.IsInRole("Management");
+    var isAdmin = User.IsInRole("Administrator");
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var unreadNotices = 0;
+    if (signedIn)
+    {
+        // The menu must still render (e.g. on the error page) if the database is unreachable
+        try { unreadNotices = await Notices.CountUnreadAsync(User.GetUserId()); }
+        catch (Exception) { unreadNotices = 0; }
+    }
 }
 <body>
     <header class="cc-header">
@@ -53,6 +65,39 @@
                         {
                             <li class="nav-item">
                                 <a class="nav-link @Active("/Staff/Index")" aria-current="@Current("/Staff/Index")" asp-page="/Staff/Index">Work queue</a>
+                            </li>
+                        }
+                        @if (canLogOnBehalf)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Staff/LogRequest")" aria-current="@Current("/Staff/LogRequest")" asp-page="/Staff/LogRequest">Log a request</a>
+                            </li>
+                        }
+                        @if (canSeeReports)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Reports/Index")" aria-current="@Current("/Reports/Index")" asp-page="/Reports/Index">Reports</a>
+                            </li>
+                        }
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Admin/Users/Index")" aria-current="@Current("/Admin/Users/Index")" asp-page="/Admin/Users/Index">Users</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Admin/Categories/Index")" aria-current="@Current("/Admin/Categories/Index")" asp-page="/Admin/Categories/Index">Categories</a>
+                            </li>
+                        }
+                        @if (signedIn)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @Active("/Notices")" aria-current="@Current("/Notices")" asp-page="/Notices">
+                                    Notices
+                                    @if (unreadNotices > 0)
+                                    {
+                                        <span class="cc-count-badge">@unreadNotices<span class="visually-hidden"> unread</span></span>
+                                    }
+                                </a>
                             </li>
                         }
                         <li class="nav-item">

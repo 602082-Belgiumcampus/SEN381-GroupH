@@ -36,7 +36,17 @@ public sealed class DatabaseInitializer(
         ("admin@civicconnect.local", "Demo Administrator", Role.Administrator)
     ];
 
-    public async Task InitialiseAsync(string? demoPassword, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// <paramref name="applyMigrations"/> is true in Development. Elsewhere migrations are a separate
+    /// deployment step (D-015), so start-up only checks that the schema is up to date and then seeds.
+    /// <paramref name="bootstrapAdmin"/> creates the first administrator on a new environment, so
+    /// someone can sign in and create the other accounts (FR-021).
+    /// </summary>
+    public async Task InitialiseAsync(
+        string? demoPassword,
+        bool applyMigrations = true,
+        (string Email, string Password)? bootstrapAdmin = null,
+        CancellationToken cancellationToken = default)
     {
         if (!db.Database.GetMigrations().Any())
             throw new InvalidOperationException(
@@ -44,7 +54,18 @@ public sealed class DatabaseInitializer(
                 "dotnet ef migrations add InitialCreate --project src/CivicConnect.Infrastructure " +
                 "--startup-project src/CivicConnect.Web --output-dir Persistence/Migrations");
 
-        await db.Database.MigrateAsync(cancellationToken);
+        if (applyMigrations)
+        {
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+        else
+        {
+            var pending = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+            if (pending.Count > 0)
+                throw new InvalidOperationException(
+                    $"The database is missing {pending.Count} migration(s) ({string.Join(", ", pending)}). " +
+                    "Run the migration bundle before starting the app (see docs/operations/deployment.md).");
+        }
 
         foreach (var roleName in Enum.GetNames<Role>())
         {
@@ -67,6 +88,24 @@ public sealed class DatabaseInitializer(
 
         if (!string.IsNullOrEmpty(demoPassword))
             await SeedDemoUsersAsync(demoPassword);
+
+        if (bootstrapAdmin is var (adminEmail, adminPassword) && await userManager.FindByEmailAsync(adminEmail) is null)
+        {
+            var admin = new AppUser
+            {
+                Id = Guid.CreateVersion7(),
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true,
+                DisplayName = "Administrator",
+                IsActive = true,
+                CreatedAt = time.GetUtcNow()
+            };
+
+            await EnsureSucceeded(userManager.CreateAsync(admin, adminPassword), $"create the first administrator {adminEmail}");
+            await EnsureSucceeded(userManager.AddToRoleAsync(admin, nameof(Role.Administrator)), "give the first administrator the Administrator role");
+            logger.LogInformation("Created the first administrator account {UserId}", admin.Id);
+        }
     }
 
     private async Task SeedDemoUsersAsync(string password)
