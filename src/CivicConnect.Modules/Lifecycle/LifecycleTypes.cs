@@ -20,7 +20,8 @@ public enum LifecycleEvent
     Assign,
     Start,
     Resolve,
-    Close
+    Close,
+    Reopen
 }
 
 public sealed record RequestState(

@@ -1,4 +1,10 @@
+using CivicConnect.Infrastructure.Administration;
+using CivicConnect.Infrastructure.Feedback;
 using CivicConnect.Infrastructure.Identity;
+using CivicConnect.Infrastructure.Reporting;
+using CivicConnect.Modules.Administration;
+using CivicConnect.Modules.Feedback;
+using CivicConnect.Modules.Reporting;
 using CivicConnect.Infrastructure.Lifecycle;
 using CivicConnect.Infrastructure.Persistence;
 using CivicConnect.Infrastructure.RequestIntake;
@@ -51,7 +57,17 @@ public static class DependencyInjection
         services.AddScoped<ISubmitRequest, SubmitRequestService>();
         services.AddScoped<ILifecycleService, LifecycleService>();
         services.AddScoped<IRequestQueries, RequestQueryService>();
+        services.AddScoped<IFeedbackNotices, FeedbackNoticeService>();
+        services.AddScoped<IReportQueries, ReportQueryService>();
+        services.AddScoped<IAdministration, AdministrationService>();
         services.AddScoped<DatabaseInitializer>();
+
+        // Deactivation and role changes refresh the security stamp; check it every minute so they
+        // take effect quickly instead of after the default 30 minutes (AC-038)
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
+
+        // GET /health for the hosting platform: is the app up and can it reach the database?
+        services.AddHealthChecks().AddDbContextCheck<CivicConnectDbContext>("database");
 
         return services;
     }

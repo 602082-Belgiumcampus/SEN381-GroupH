@@ -73,6 +73,35 @@ else
                 <span>Review, assign and resolve requests.</span>
             </a>
         }
+        @if (User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor"))
+        {
+            <a class="cc-action" asp-page="/Staff/LogRequest">
+                <strong>Log a request</strong>
+                <span>For someone who phoned, emailed or walked in.</span>
+            </a>
+        }
+        @if (User.IsInRole("Supervisor") || User.IsInRole("Management"))
+        {
+            <a class="cc-action" asp-page="/Reports/Index">
+                <strong>Reports</strong>
+                <span>Volumes, overdue requests and who did what.</span>
+            </a>
+        }
+        @if (User.IsInRole("Administrator"))
+        {
+            <a class="cc-action" asp-page="/Admin/Users/Index">
+                <strong>Users</strong>
+                <span>Create accounts, change roles, deactivate.</span>
+            </a>
+            <a class="cc-action" asp-page="/Admin/Categories/Index">
+                <strong>Categories</strong>
+                <span>The category list and target times.</span>
+            </a>
+        }
+        <a class="cc-action" asp-page="/Notices">
+            <strong>Notices</strong>
+            <span>Updates about your requests.</span>
+        </a>
         <a class="cc-action" asp-page="/Lifecycle">
             <strong>How requests move</strong>
             <span>The steps every request goes through.</span>

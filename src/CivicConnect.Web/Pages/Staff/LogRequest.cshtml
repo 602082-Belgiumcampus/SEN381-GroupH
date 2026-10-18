@@ -1,0 +1,85 @@
+@page
+@model CivicConnect.Web.Pages.Staff.LogRequestModel
+@{
+    ViewData["Title"] = "Log a request";
+}
+
+<div class="row">
+    <div class="col-lg-8 col-xl-7">
+        <div class="cc-page-head">
+            <div>
+                <h1>Log a request for someone</h1>
+                <p class="cc-lead">For requests that come in by phone, email or in person. The request is linked to the requester, and records you and how they got in touch.</p>
+            </div>
+        </div>
+
+        <form method="post" novalidate class="cc-panel">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <fieldset class="mb-4">
+                <legend class="h5">Who is it for?</legend>
+
+                <div class="mb-3">
+                    <label asp-for="Input.RequesterEmail" class="form-label">Requester's email <span class="cc-required" aria-hidden="true">*</span></label>
+                    <input asp-for="Input.RequesterEmail" class="form-control" type="email" autocomplete="off" aria-describedby="email-hint" />
+                    <div id="email-hint" class="form-text">If they already have an account, the request is added to it.</div>
+                    <span asp-validation-for="Input.RequesterEmail" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.RequesterName" class="form-label"></label>
+                    <input asp-for="Input.RequesterName" class="form-control" autocomplete="off" aria-describedby="name-hint" />
+                    <div id="name-hint" class="form-text">We create an account for them with this name. They can set a password later by registering with the same email.</div>
+                    <span asp-validation-for="Input.RequesterName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-1">
+                    <label asp-for="Input.ContactChannel" class="form-label">How they contacted you <span class="cc-required" aria-hidden="true">*</span></label>
+                    <select asp-for="Input.ContactChannel" asp-items="Model.Channels" class="form-select">
+                        <option value="">Choose one</option>
+                    </select>
+                    <span asp-validation-for="Input.ContactChannel" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="h5">What is the problem?</legend>
+
+                <div class="mb-3">
+                    <label asp-for="Input.CategoryId" class="form-label">Category <span class="cc-required" aria-hidden="true">*</span></label>
+                    <select asp-for="Input.CategoryId" asp-items="Model.Categories" class="form-select">
+                        <option value="">Choose a category</option>
+                    </select>
+                    <span asp-validation-for="Input.CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Title" class="form-label">Title <span class="cc-required" aria-hidden="true">*</span></label>
+                    <input asp-for="Input.Title" class="form-control" />
+                    <span asp-validation-for="Input.Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Description" class="form-label">Description <span class="cc-required" aria-hidden="true">*</span></label>
+                    <textarea asp-for="Input.Description" class="form-control" rows="5"></textarea>
+                    <span asp-validation-for="Input.Description" class="text-danger"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Input.Location" class="form-label"></label>
+                    <input asp-for="Input.Location" class="form-control" />
+                    <span asp-validation-for="Input.Location" class="text-danger"></span>
+                </div>
+            </fieldset>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Log request</button>
+                <a asp-page="/Staff/Index" class="btn btn-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

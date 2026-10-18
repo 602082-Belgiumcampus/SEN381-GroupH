@@ -1,0 +1,80 @@
+@page
+@model CivicConnect.Web.Pages.Admin.Categories.IndexModel
+@{
+    ViewData["Title"] = "Categories";
+}
+
+@if (TempData["Flash"] is string flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+
+<div class="cc-page-head">
+    <div>
+        <h1>Categories</h1>
+        <p class="cc-lead">What requesters can choose from, and how many days each kind of request should take. A request is overdue when it is still open after its category's target.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="cc-list table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Category</th>
+                        <th scope="col" class="text-end">Target</th>
+                        <th scope="col" class="text-end">Requests</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <tr>
+                            <th scope="row">@category.Name</th>
+                            <td class="text-end">@category.TargetResolutionDays days</td>
+                            <td class="text-end">@category.RequestCount</td>
+                            <td>
+                                @if (category.IsActive)
+                                {
+                                    <span class="cc-pill cc-pill--done">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="cc-pill cc-pill--waiting">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end"><a asp-page="/Admin/Categories/Edit" asp-route-id="@category.Id">Edit<span class="visually-hidden"> @category.Name</span></a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <section class="cc-panel" aria-labelledby="add-heading">
+            <h2 id="add-heading">Add a category</h2>
+            <form method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                <div class="mb-3">
+                    <label asp-for="Input.Name" class="form-label"></label>
+                    <input asp-for="Input.Name" class="form-control" />
+                    <span asp-validation-for="Input.Name" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Input.TargetResolutionDays" class="form-label"></label>
+                    <input asp-for="Input.TargetResolutionDays" class="form-control" type="number" min="1" max="@AdminRules.MaxTargetResolutionDays" />
+                    <span asp-validation-for="Input.TargetResolutionDays" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Add category</button>
+            </form>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

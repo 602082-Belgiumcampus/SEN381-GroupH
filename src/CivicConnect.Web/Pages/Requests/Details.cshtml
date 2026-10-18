@@ -4,11 +4,12 @@
     var request = Model.Detail;
     ViewData["Title"] = request.Reference;
 
-    string HistoryLabel(HistoryItem item) => item.EventType switch
+    string? HistoryDetail(HistoryItem item) => item.EventType switch
     {
-        "Submit" => "Submitted",
-        "Start" => "Work started",
-        _ => StatusDisplay.Label(item.To)
+        "Reject" or "Reopen" => item.Detail is null ? null : $"Reason: {item.Detail}",
+        "Resolve" => item.Detail is null ? null : $"What was done: {item.Detail}",
+        "RecordAction" => item.Detail,
+        _ => null
     };
 }
 
@@ -52,6 +53,11 @@
                     <dt>Reported by</dt>
                     <dd>@request.RequesterName</dd>
                 }
+                @if (request.LoggedByName is not null)
+                {
+                    <dt>Logged by</dt>
+                    <dd>@request.LoggedByName, contact by @request.ContactChannel.ToLowerInvariant()</dd>
+                }
                 <dt>Assigned to</dt>
                 <dd>@(request.AssignedToName ?? "Not assigned yet")</dd>
                 @if (request.ClosedAt is DateTimeOffset closedAt)
@@ -77,20 +83,60 @@
             }
         </section>
 
+        @if (request.WorkLog.Count > 0 || Model.CanRecordAction)
+        {
+            <section class="cc-panel" aria-labelledby="worklog-heading">
+                <h2 id="worklog-heading">Work log</h2>
+                @if (request.WorkLog.Count == 0)
+                {
+                    <p class="cc-waiting">No actions recorded yet.</p>
+                }
+                else
+                {
+                    <ol class="cc-history">
+                        @foreach (var entry in request.WorkLog)
+                        {
+                            <li>
+                                <div class="cc-worklog__text">@entry.Text</div>
+                                <div class="cc-history__who">
+                                    @entry.AuthorName,
+                                    <time datetime="@entry.CreatedAt.ToString("O")">@entry.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
+
+                @if (Model.CanRecordAction)
+                {
+                    <form method="post" asp-page-handler="RecordAction" asp-route-id="@request.Id" class="mt-3">
+                        <label asp-for="ActionText" class="form-label">Record an action</label>
+                        <textarea asp-for="ActionText" class="form-control" rows="3" maxlength="@RequestActionRules.TextMaxLength"
+                                  aria-describedby="action-hint"></textarea>
+                        <div id="action-hint" class="form-text">What you did or found, for example "Ordered a replacement part". The requester can see this.</div>
+                        <span asp-validation-for="ActionText" class="text-danger"></span>
+                        <div class="mt-2">
+                            <button type="submit" class="btn btn-outline-primary">Add to work log</button>
+                        </div>
+                    </form>
+                }
+            </section>
+        }
+
         <section class="cc-panel" aria-labelledby="history-heading">
             <h2 id="history-heading">History</h2>
             <ol class="cc-history">
                 @foreach (var item in request.History)
                 {
                     <li>
-                        <div class="cc-history__what">@HistoryLabel(item)</div>
+                        <div class="cc-history__what">@StatusDisplay.HistoryLabel(item.EventType, item.To)</div>
                         <div class="cc-history__who">
                             @item.ActorName,
                             <time datetime="@item.OccurredAt.ToString("O")">@item.OccurredAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time>
                         </div>
-                        @if (item.EventType == "Reject" && item.Detail is not null)
+                        @if (HistoryDetail(item) is string detail)
                         {
-                            <div class="cc-history__why">Reason: @item.Detail</div>
+                            <div class="cc-history__why">@detail</div>
                         }
                     </li>
                 }
@@ -186,6 +232,20 @@
                     <form method="post" asp-page-handler="Close" asp-route-id="@request.Id">
                         <input type="hidden" asp-for="Version" />
                         <button type="submit" class="btn btn-dark w-100">Close request</button>
+                    </form>
+                }
+
+                @if (Model.CanAct(LifecycleEvent.Reopen))
+                {
+                    <p class="mt-3">Not fixed after all? Reopen it and it goes back to the same staff member.</p>
+                    <form method="post" asp-page-handler="Reopen" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <div class="mb-2">
+                            <label asp-for="ReopenReason" class="form-label">Why it needs more work</label>
+                            <textarea asp-for="ReopenReason" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="ReopenReason" class="text-danger"></span>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary w-100">Reopen request</button>
                     </form>
                 }
             </section>

@@ -5,36 +5,55 @@ Design and decisions: see `docs/PED/PEDv2.1.md`.
 
 ## Status
 
-Early development (Milestone 3 in progress)
+Milestone 4: feature-complete for the agreed scope, not yet deployed. Final status of every item is in
+`docs/M4-final-status.md`.
 
 **Exists:**
 - .NET 10 solution (`CivicConnect.slnx`) with SDK pinned in `global.json`.
 - `src/CivicConnect.Modules`: pure rules with no database, plus the module contracts (ADR-008):
   - Lifecycle: table-driven state machine, authorisation rules and engine for FR-011.
   - IdentityAccess: `Actor`, roles, and who may see a request (AS-05, ADR-007).
-  - RequestIntake: submit-form validation (CL-05) and the request reference format (FR-003).
+  - RequestIntake: submit-form validation (CL-05), the request reference format (FR-003) and the
+    log-on-behalf rules (FR-020).
+  - Feedback: notice texts for each lifecycle event (FR-006, CL-02).
+  - Reporting: the overdue rule (CR-001) and report arithmetic (FR-014 to FR-017).
+  - Administration: user and category rules (FR-021, FR-022).
 - `src/CivicConnect.Infrastructure`: PostgreSQL through EF Core and ASP.NET Core Identity.
-  - Tables: users, roles, categories, service requests and the audit trail.
-  - Services: request intake, the lifecycle service (status change and audit entry saved together,
-    optimistic concurrency on `Version`) and request queries.
-  - Seeding: roles and an initial category list.
+  - Tables: users, roles, categories, service requests, the audit trail, the work log (RequestActions)
+    and feedback notices.
+  - Services: request intake (including log on behalf), the lifecycle service (status change, audit
+    entry and requester notice saved together, optimistic concurrency on `Version`), request queries
+    with search/filter/sort, reports, notices and administration.
+  - Seeding: roles, an initial category list, demo users (Development) and a first administrator
+    (`Seed:AdminEmail` / `Seed:AdminPassword`, any environment).
 - `src/CivicConnect.Web`: Razor Pages website.
   - Sign in, sign out, and requester self-registration.
   - Requesters can submit a request and see "My requests".
-  - Staff have a work queue. The request detail page offers only the next allowed step:
-    accept or reject, assign (supervisors choose anyone, staff assign themselves), start work,
-    resolve with a note, and close.
+  - Staff have a work queue; staff and requesters can search, filter and sort their lists (FR-008).
+    The request detail page offers only the next allowed step: accept or reject, assign (supervisors
+    choose anyone, staff assign themselves), start work, resolve with a note, close, and reopen
+    (supervisors only, OD-05). The assignee or a supervisor can record actions in a work log (FR-012).
+  - Staff can log a request for someone who phoned, emailed or walked in (FR-020).
+  - Requesters get notices when their request is accepted, rejected, updated or resolved (FR-006).
+  - Supervisors and management have reports: volumes, overdue requests and who did what (FR-014 to FR-017).
+  - Administrators manage users, roles and categories (FR-021, FR-022).
+  - `GET /health` for the hosting platform.
   - The request lifecycle demo page.
 - `tests/CivicConnect.Domain.Tests`: xUnit tests for TC-LC-01 to TC-LC-16, which actions each user is
   offered, a full Submitted-to-Closed journey, and the pure parts of
   TC-IN-01 to TC-IN-03, TC-AZ-01 and TC-AZ-05.
 - `tests/CivicConnect.Integration.Tests`: tests against a real PostgreSQL and the running web app for
-  TC-PE-01 to TC-PE-03, TC-AZ-01 to TC-AZ-05 and the database parts of TC-IN-01 to TC-IN-03.
-- CI (`.github/workflows/ci.yml`): build, all tests, vulnerable-package check and secrets scan on every
-  pull request and push to `main` or `development`.
+  TC-PE-01 to TC-PE-03, TC-AZ-01 to TC-AZ-06, TC-IN-01 to TC-IN-04 and the M4 features.
+- `tests/CivicConnect.LoadTests`: load test for ASR-05 (not run by `dotnet test`; see
+  `docs/evidence/performance.md`).
+- CI (`.github/workflows/ci.yml`): build, all tests, vulnerable-package check, secrets scan, and a
+  container job that builds the Docker image, runs its migration bundle and checks `/health`.
+- Operations: `Dockerfile`, `docs/operations/deployment.md` (staging), `scripts/backup.ps1` and
+  `scripts/restore.ps1` with `docs/operations/backup-restore.md`.
+- Evidence: `docs/evidence/` (performance, accessibility, usability test plan).
 
-**Not yet implemented:** reopening a resolved request (OD-05), log on behalf (FR-020, TC-IN-04),
-feedback notices, reporting, administration pages (TC-AZ-06).
+**Not done:** a deployed staging environment (platform not chosen, OD-01), usability test sessions
+(plan ready), admin-action auditing (FE-09).
 
 ## Prerequisites
 
@@ -104,27 +123,43 @@ To walk a request through its whole life (demo password for every account is you
 2. `staff@` opens it from the work queue and accepts it.
 3. `supervisor@` assigns it to Demo Staff Member (or `staff@` clicks "Assign to me").
 4. `staff@` clicks "Start work", then resolves it with a note.
-5. `supervisor@` closes it. The requester sees the resolution note and the full history.
+5. `supervisor@` closes it (or reopens it with a reason). The requester sees the resolution note, the
+   work log and the full history, and has a notice for each step under "Notices".
+
+Also try: `staff@` → "Log a request" for a new email; `manager@` → "Reports"; `admin@` → "Users" and
+"Categories".
 
 ## Structure
 
 ```
 src/CivicConnect.Modules/          one folder per module (PED Figure 2), no database code
   IdentityAccess/                  Actor, roles, request visibility
-  Lifecycle/                       state table, authorisation rules, engine, service contract
-  RequestIntake/                   submit validation, reference format, intake contract
-  RequestQueries/                  query contract and read models
+  Lifecycle/                       state table, authorisation rules, engine, record-action rules, service contract
+  RequestIntake/                   submit and log-on-behalf validation, reference format, intake contract
+  RequestQueries/                  query contract, search/filter types and read models
+  Feedback/                        notice texts and contract
+  Reporting/                       overdue rule, report arithmetic and contract
+  Administration/                  user and category rules and contract
 src/CivicConnect.Infrastructure/   EF Core + PostgreSQL + Identity
   Identity/                        AppUser
   Persistence/                     DbContext, entities, migrations, startup initialiser
-  RequestIntake/ Lifecycle/ RequestQueries/   implementations of the module contracts
+  RequestIntake/ Lifecycle/ RequestQueries/ Feedback/ Reporting/ Administration/
+                                   implementations of the module contracts
 src/CivicConnect.Web/              Razor Pages website
   Pages/Account/                   sign in, register, sign out
-  Pages/Requests/                  submit, my requests, request detail (accept / reject)
-  Pages/Staff/                     work queue
+  Pages/Requests/                  submit, my requests, request detail (all lifecycle actions, work log)
+  Pages/Staff/                     work queue, log a request on someone's behalf
+  Pages/Reports/                   management reports
+  Pages/Admin/                     users and categories
+  Pages/Notices.cshtml             the signed-in user's notices
   Security/                        policies and the signed-in user as an Actor
 tests/CivicConnect.Domain.Tests/   pure rule tests (no database)
 tests/CivicConnect.Integration.Tests/  database and web tests (PostgreSQL)
-.github/workflows/ci.yml           CI: build, tests, vulnerable packages, secrets scan
+tests/CivicConnect.LoadTests/      load test for ASR-05
+scripts/                           backup and restore
+docs/operations/                   deployment and backup/restore procedures
+docs/evidence/                     performance, accessibility, usability plan
+.github/workflows/ci.yml           CI: build, tests, vulnerable packages, secrets scan, container
+Dockerfile                         staging image (app + migration bundle)
 docker-compose.yml                 local PostgreSQL 18
 ```

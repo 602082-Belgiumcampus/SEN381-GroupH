@@ -1,0 +1,46 @@
+@model CivicConnect.Web.Pages.Shared.RequestFilterForm
+
+@* FR-008: a GET form, so a search can be bookmarked or shared and the back button works *@
+<form method="get" class="cc-filters" role="search" aria-label="Search and filter requests">
+    <div class="cc-filters__search">
+        <label for="filter-search" class="form-label">Search</label>
+        <input id="filter-search" name="Search" value="@Model.Search" class="form-control" type="search"
+               maxlength="@RequestFilter.SearchMaxLength" placeholder="Reference or title" />
+    </div>
+    <div>
+        <label for="filter-status" class="form-label">Status</label>
+        <select id="filter-status" name="Status" class="form-select">
+            <option value="">Any status</option>
+            @foreach (var status in Enum.GetValues<RequestStatus>())
+            {
+                <option value="@status" selected="@(Model.Status == status)">@StatusDisplay.Label(status)</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="filter-category" class="form-label">Category</label>
+        <select id="filter-category" name="CategoryId" class="form-select">
+            <option value="">Any category</option>
+            @foreach (var category in Model.Categories)
+            {
+                <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">@category.Name</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="filter-sort" class="form-label">Sort</label>
+        <select id="filter-sort" name="Sort" class="form-select">
+            @foreach (var sort in Enum.GetValues<RequestSort>())
+            {
+                <option value="@sort" selected="@(Model.Sort == sort)">@RequestFilterForm.SortLabel(sort)</option>
+            }
+        </select>
+    </div>
+    <div class="cc-filters__buttons">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        @if (Model.IsFiltered)
+        {
+            <a class="btn btn-link" href="?">Clear</a>
+        }
+    </div>
+</form>

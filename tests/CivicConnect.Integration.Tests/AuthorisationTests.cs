@@ -166,7 +166,7 @@ public class AuthorisationTests(CivicConnectAppFactory app) : IntegrationTest(ap
     private Task<List<Guid>> QueueIdsAsync(TestUser user) =>
         WithServicesAsync(async services =>
         {
-            var queue = await services.GetRequiredService<IRequestQueries>().GetStaffQueueAsync(user.Actor, 1, 100);
+            var queue = await services.GetRequiredService<IRequestQueries>().GetStaffQueueAsync(user.Actor, new RequestFilter(), 1, 100);
             return queue.Items.Select(r => r.Id).ToList();
         });
 }

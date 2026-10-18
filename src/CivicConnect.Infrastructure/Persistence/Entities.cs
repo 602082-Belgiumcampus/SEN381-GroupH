@@ -55,6 +55,37 @@ public class ServiceRequest
     public DateTimeOffset? ClosedAt { get; set; }
 }
 
+/// <summary>FR-012: an action recorded on a request (work-log entry). Append-only, like the audit trail.</summary>
+public class RequestAction
+{
+    public long Id { get; set; }
+
+    public Guid RequestId { get; set; }
+    public ServiceRequest Request { get; set; } = null!;
+
+    public Guid AuthorId { get; set; }
+    public AppUser Author { get; set; } = null!;
+
+    public string Text { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>FR-006: a notice to the requester about a change to their request (CL-02).</summary>
+public class FeedbackNotice
+{
+    public long Id { get; set; }
+
+    public Guid RequestId { get; set; }
+    public ServiceRequest Request { get; set; } = null!;
+
+    public Guid RecipientId { get; set; }
+    public AppUser Recipient { get; set; } = null!;
+
+    public string Message { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? ReadAt { get; set; }
+}
+
 /// <summary>
 /// Append-only record of significant actions (FR-019, NFR-008). The application never updates or
 /// deletes these rows; restricting the database role to INSERT/SELECT is still to do (R-12).

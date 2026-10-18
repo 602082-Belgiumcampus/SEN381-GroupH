@@ -12,7 +12,7 @@
     <a asp-page="/Requests/New" class="btn btn-primary">Submit a request</a>
 </div>
 
-@if (Model.Requests.TotalCount == 0)
+@if (Model.Requests.TotalCount == 0 && !Model.Filters.IsFiltered)
 {
     <div class="cc-empty">
         <p>You haven't submitted any requests yet. When you do, you can follow each one here.</p>
@@ -21,6 +21,19 @@
 }
 else
 {
-    <partial name="_RequestTable" model="Model.Requests.Items" />
-    <partial name="_Pager" model="Model.Requests" />
+    <partial name="_RequestFilters" model="Model.Filters" />
+
+    @if (Model.Requests.TotalCount == 0)
+    {
+        <div class="cc-empty">
+            <p>None of your requests match that search.</p>
+            <a class="btn btn-outline-primary" asp-page="/Requests/Index">Show all my requests</a>
+        </div>
+    }
+    else
+    {
+        <p class="cc-count" role="status">@Model.Requests.TotalCount @(Model.Requests.TotalCount == 1 ? "request" : "requests")</p>
+        <partial name="_RequestTable" model="Model.Requests.Items" />
+        <partial name="_Pager" model="Model.Requests" />
+    }
 }

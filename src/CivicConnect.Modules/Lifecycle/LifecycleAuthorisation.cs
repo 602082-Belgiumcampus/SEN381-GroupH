@@ -27,6 +27,9 @@ public static class LifecycleAuthorisation
             // users with close permission
             LifecycleEvent.Close => actor.HasClosePermission,
 
+            // supervisors only (OD-05)
+            LifecycleEvent.Reopen => actor.IsInRole(Role.Supervisor),
+
             _ => false
         };
 }

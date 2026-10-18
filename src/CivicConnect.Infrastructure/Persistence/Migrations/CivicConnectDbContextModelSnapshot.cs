@@ -17,7 +17,7 @@ namespace CivicConnect.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -139,6 +139,8 @@ namespace CivicConnect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ActorId");
 
+                    b.HasIndex("OccurredAt");
+
                     b.HasIndex("RequestId", "OccurredAt");
 
                     b.ToTable("AuditEntries");
@@ -170,6 +172,71 @@ namespace CivicConnect.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Categories_TargetResolutionDays_Positive", "\"TargetResolutionDays\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("CivicConnect.Infrastructure.Persistence.FeedbackNotice", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("RecipientId", "CreatedAt");
+
+                    b.ToTable("FeedbackNotices");
+                });
+
+            modelBuilder.Entity("CivicConnect.Infrastructure.Persistence.RequestAction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("RequestId", "CreatedAt");
+
+                    b.ToTable("RequestActions");
                 });
 
             modelBuilder.Entity("CivicConnect.Infrastructure.Persistence.ServiceRequest", b =>
@@ -410,6 +477,44 @@ namespace CivicConnect.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Actor");
+
+                    b.Navigation("Request");
+                });
+
+            modelBuilder.Entity("CivicConnect.Infrastructure.Persistence.FeedbackNotice", b =>
+                {
+                    b.HasOne("CivicConnect.Infrastructure.Identity.AppUser", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CivicConnect.Infrastructure.Persistence.ServiceRequest", "Request")
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Request");
+                });
+
+            modelBuilder.Entity("CivicConnect.Infrastructure.Persistence.RequestAction", b =>
+                {
+                    b.HasOne("CivicConnect.Infrastructure.Identity.AppUser", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CivicConnect.Infrastructure.Persistence.ServiceRequest", "Request")
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Author");
 
                     b.Navigation("Request");
                 });

@@ -56,6 +56,26 @@ public class RegisterModel(
         if (!ModelState.IsValid)
             return Page();
 
+        // OD-07: staff may already have created a requester account for this email (FR-020) with no
+        // password. Registering with that email sets the password, so the person sees those requests.
+        // Known limitation: without email confirmation, whoever registers first with the email gets it.
+        var existing = await userManager.FindByEmailAsync(Input.Email.Trim());
+        if (existing is not null && existing.IsActive && !await userManager.HasPasswordAsync(existing)
+            && await userManager.IsInRoleAsync(existing, nameof(Role.Requester)))
+        {
+            var passwordSet = await userManager.AddPasswordAsync(existing, Input.Password);
+            if (!passwordSet.Succeeded)
+            {
+                foreach (var error in passwordSet.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+                return Page();
+            }
+
+            logger.LogInformation("Requester account {UserId} created by staff was claimed by registering", existing.Id);
+            await signInManager.SignInAsync(existing, isPersistent: false);
+            return RedirectToPage("/Requests/Index");
+        }
+
         var user = new AppUser
         {
             Id = Guid.CreateVersion7(),

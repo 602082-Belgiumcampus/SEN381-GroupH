@@ -60,11 +60,11 @@ public class LifecycleActionsTests
     }
 
     [Fact]
-    public void Resolved_request_offers_close_only_to_users_with_close_permission()
+    public void Resolved_request_offers_close_and_reopen_only_to_supervisors()
     {
         var resolved = State(RequestStatus.Resolved, StaffAId);
 
-        Assert.Equal(new[] { LifecycleEvent.Close }, LifecycleActions.Available(Supervisor(), resolved));
+        Assert.Equal(new[] { LifecycleEvent.Close, LifecycleEvent.Reopen }, LifecycleActions.Available(Supervisor(), resolved));
         Assert.Empty(LifecycleActions.Available(Staff(StaffAId), resolved));
     }
 
