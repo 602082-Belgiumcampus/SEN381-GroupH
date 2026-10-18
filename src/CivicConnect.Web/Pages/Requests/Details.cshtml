@@ -3,6 +3,13 @@
 @{
     var request = Model.Detail;
     ViewData["Title"] = request.Reference;
+
+    string HistoryLabel(HistoryItem item) => item.EventType switch
+    {
+        "Submit" => "Submitted",
+        "Start" => "Work started",
+        _ => StatusDisplay.Label(item.To)
+    };
 }
 
 @if (TempData["Flash"] is string flash)
@@ -14,67 +21,76 @@
     <div class="alert alert-warning" role="alert">@error</div>
 }
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-    <h1 class="h3 mb-0">@request.Title</h1>
-    <partial name="_StatusBadge" model="request.Status" />
-</div>
-<p class="text-muted">Reference <strong>@request.Reference</strong> · @request.Category</p>
+<header class="cc-request-head">
+    <div class="cc-request-head__ref">@request.Reference</div>
+    <h1>@request.Title</h1>
+    <div class="cc-request-head__meta">
+        <span>@request.Category</span>
+        <span>Submitted @request.CreatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</span>
+        <partial name="_StatusBadge" model="request.Status" />
+    </div>
+</header>
+
+<section class="cc-panel cc-track-panel" aria-label="Progress">
+    <partial name="_StatusTrack" model="request.Status" />
+</section>
 
 <div class="row g-4">
-    <div class="col-lg-8">
-        <section class="card mb-4" aria-labelledby="details-heading">
-            <div class="card-body">
-                <h2 class="h5" id="details-heading">Details</h2>
-                <p class="mb-3" style="white-space: pre-line">@request.Description</p>
-                <dl class="row mb-0">
-                    @if (request.Location is not null)
-                    {
-                        <dt class="col-sm-4">Location</dt>
-                        <dd class="col-sm-8">@request.Location</dd>
-                    }
-                    @if (Model.ShowRequester)
-                    {
-                        <dt class="col-sm-4">Requester</dt>
-                        <dd class="col-sm-8">@request.RequesterName</dd>
-                    }
-                    <dt class="col-sm-4">Submitted</dt>
-                    <dd class="col-sm-8">@request.CreatedAt.ToLocalTime().ToString("d MMM yyyy HH:mm")</dd>
-                    @if (request.AssignedToName is not null)
-                    {
-                        <dt class="col-sm-4">Assigned to</dt>
-                        <dd class="col-sm-8">@request.AssignedToName</dd>
-                    }
-                    @if (request.RejectionReason is not null)
-                    {
-                        <dt class="col-sm-4">Reason for rejection</dt>
-                        <dd class="col-sm-8">@request.RejectionReason</dd>
-                    }
-                    @if (request.ResolutionNote is not null)
-                    {
-                        <dt class="col-sm-4">Resolution</dt>
-                        <dd class="col-sm-8">@request.ResolutionNote</dd>
-                    }
-                    @if (request.ClosedAt is DateTimeOffset closedAt)
-                    {
-                        <dt class="col-sm-4">Closed</dt>
-                        <dd class="col-sm-8">@closedAt.ToLocalTime().ToString("d MMM yyyy HH:mm")</dd>
-                    }
-                </dl>
-            </div>
+    <div class="col-lg-8 order-2 order-lg-1">
+        <section class="cc-panel" aria-labelledby="details-heading">
+            <h2 id="details-heading">What was reported</h2>
+            <p class="cc-description">@request.Description</p>
+
+            <dl class="cc-facts">
+                @if (request.Location is not null)
+                {
+                    <dt>Location</dt>
+                    <dd>@request.Location</dd>
+                }
+                @if (Model.ShowRequester)
+                {
+                    <dt>Reported by</dt>
+                    <dd>@request.RequesterName</dd>
+                }
+                <dt>Assigned to</dt>
+                <dd>@(request.AssignedToName ?? "Not assigned yet")</dd>
+                @if (request.ClosedAt is DateTimeOffset closedAt)
+                {
+                    <dt>Closed</dt>
+                    <dd>@closedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</dd>
+                }
+            </dl>
+
+            @if (request.ResolutionNote is not null)
+            {
+                <div class="cc-note cc-note--done">
+                    <strong>What was done</strong>
+                    <p>@request.ResolutionNote</p>
+                </div>
+            }
+            @if (request.RejectionReason is not null)
+            {
+                <div class="cc-note cc-note--stopped">
+                    <strong>Why it was rejected</strong>
+                    <p>@request.RejectionReason</p>
+                </div>
+            }
         </section>
 
-        <section aria-labelledby="history-heading">
-            <h2 class="h5" id="history-heading">History</h2>
-            <ol class="list-group list-group-numbered">
+        <section class="cc-panel" aria-labelledby="history-heading">
+            <h2 id="history-heading">History</h2>
+            <ol class="cc-history">
                 @foreach (var item in request.History)
                 {
-                    <li class="list-group-item">
-                        <strong>@(item.From is RequestStatus from ? $"{StatusDisplay.Label(from)} → " : "")@StatusDisplay.Label(item.To)</strong>
-                        by @item.ActorName,
-                        <time datetime="@item.OccurredAt.ToString("O")">@item.OccurredAt.ToLocalTime().ToString("d MMM yyyy HH:mm")</time>
+                    <li>
+                        <div class="cc-history__what">@HistoryLabel(item)</div>
+                        <div class="cc-history__who">
+                            @item.ActorName,
+                            <time datetime="@item.OccurredAt.ToString("O")">@item.OccurredAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</time>
+                        </div>
                         @if (item.EventType == "Reject" && item.Detail is not null)
                         {
-                            <div class="text-muted small">Reason: @item.Detail</div>
+                            <div class="cc-history__why">Reason: @item.Detail</div>
                         }
                     </li>
                 }
@@ -82,110 +98,115 @@
         </section>
     </div>
 
-    @if (Model.Actions.Count > 0)
-    {
-        <div class="col-lg-4">
-            <section class="card" aria-labelledby="actions-heading">
-                <div class="card-body">
-                    <h2 class="h5" id="actions-heading">Next step</h2>
+    <div class="col-lg-4 order-1 order-lg-2">
+        @if (Model.Actions.Count > 0)
+        {
+            <section class="cc-panel cc-next" aria-labelledby="actions-heading">
+                <h2 id="actions-heading">Next step</h2>
 
-                    @if (Model.CanAct(LifecycleEvent.Accept) || Model.CanAct(LifecycleEvent.Reject))
-                    {
-                        <p class="text-muted small">Accept it to take it forward, or reject it with a reason the requester will see.</p>
-                    }
+                @if (Model.CanAct(LifecycleEvent.Accept) || Model.CanAct(LifecycleEvent.Reject))
+                {
+                    <p>Accept it to take it forward, or reject it with a reason the requester will see.</p>
+                }
 
-                    @if (Model.CanAct(LifecycleEvent.Accept))
+                @if (Model.CanAct(LifecycleEvent.Accept))
+                {
+                    <form method="post" asp-page-handler="Accept" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <button type="submit" class="btn btn-success w-100">Accept request</button>
+                    </form>
+                }
+
+                @if (Model.CanAct(LifecycleEvent.Reject))
+                {
+                    <form method="post" asp-page-handler="Reject" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <div class="mb-2">
+                            <label asp-for="RejectionReason" class="form-label">Reason for rejecting</label>
+                            <textarea asp-for="RejectionReason" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="RejectionReason" class="text-danger"></span>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger w-100">Reject request</button>
+                    </form>
+                }
+
+                @if (Model.CanAct(LifecycleEvent.Assign))
+                {
+                    @if (Model.CanAssignOthers)
                     {
-                        <form method="post" asp-page-handler="Accept" asp-route-id="@request.Id" class="mb-4">
+                        <p>Choose who will do the work.</p>
+                        <form method="post" asp-page-handler="Assign" asp-route-id="@request.Id">
                             <input type="hidden" asp-for="Version" />
-                            <button type="submit" class="btn btn-success w-100">Accept request</button>
-                        </form>
-                    }
-
-                    @if (Model.CanAct(LifecycleEvent.Reject))
-                    {
-                        <form method="post" asp-page-handler="Reject" asp-route-id="@request.Id">
-                            <input type="hidden" asp-for="Version" />
-                            <div class="mb-2">
-                                <label asp-for="RejectionReason" class="form-label">Reason for rejecting</label>
-                                <textarea asp-for="RejectionReason" class="form-control" rows="3"></textarea>
-                                <span asp-validation-for="RejectionReason" class="text-danger"></span>
+                            <div class="mb-3">
+                                <label asp-for="AssigneeId" class="form-label">Assign to</label>
+                                <select asp-for="AssigneeId" asp-items="Model.StaffOptions" class="form-select">
+                                    <option value="">Choose a staff member</option>
+                                </select>
+                                <span asp-validation-for="AssigneeId" class="text-danger"></span>
                             </div>
-                            <button type="submit" class="btn btn-outline-danger w-100">Reject request</button>
+                            <button type="submit" class="btn btn-primary w-100">Assign request</button>
                         </form>
                     }
-
-                    @if (Model.CanAct(LifecycleEvent.Assign))
+                    else
                     {
-                        @if (Model.CanAssignOthers)
-                        {
-                            <p class="text-muted small">Choose who will do the work.</p>
-                            <form method="post" asp-page-handler="Assign" asp-route-id="@request.Id">
-                                <input type="hidden" asp-for="Version" />
-                                <div class="mb-2">
-                                    <label asp-for="AssigneeId" class="form-label">Assign to</label>
-                                    <select asp-for="AssigneeId" asp-items="Model.StaffOptions" class="form-select">
-                                        <option value="">Choose a staff member</option>
-                                    </select>
-                                    <span asp-validation-for="AssigneeId" class="text-danger"></span>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100">Assign request</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <p class="text-muted small">Take this request to work on it yourself.</p>
-                            <form method="post" asp-page-handler="AssignToMe" asp-route-id="@request.Id">
-                                <input type="hidden" asp-for="Version" />
-                                <button type="submit" class="btn btn-primary w-100">Assign to me</button>
-                            </form>
-                        }
-                    }
-
-                    @if (Model.CanAct(LifecycleEvent.Start))
-                    {
-                        <p class="text-muted small">This request is assigned to you. Start when you begin the work.</p>
-                        <form method="post" asp-page-handler="Start" asp-route-id="@request.Id">
+                        <p>Take this request to work on it yourself.</p>
+                        <form method="post" asp-page-handler="AssignToMe" asp-route-id="@request.Id">
                             <input type="hidden" asp-for="Version" />
-                            <button type="submit" class="btn btn-primary w-100">Start work</button>
+                            <button type="submit" class="btn btn-primary w-100">Assign to me</button>
                         </form>
                     }
+                }
 
-                    @if (Model.CanAct(LifecycleEvent.Resolve))
-                    {
-                        <p class="text-muted small">Describe what was done. The requester will see this note.</p>
-                        <form method="post" asp-page-handler="Resolve" asp-route-id="@request.Id">
-                            <input type="hidden" asp-for="Version" />
-                            <div class="mb-2">
-                                <label asp-for="ResolutionNote" class="form-label">Resolution note</label>
-                                <textarea asp-for="ResolutionNote" class="form-control" rows="3"></textarea>
-                                <span asp-validation-for="ResolutionNote" class="text-danger"></span>
-                            </div>
-                            <button type="submit" class="btn btn-success w-100">Mark as resolved</button>
-                        </form>
-                    }
+                @if (Model.CanAct(LifecycleEvent.Start))
+                {
+                    <p>This request is assigned to you. Start it when you begin the work.</p>
+                    <form method="post" asp-page-handler="Start" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <button type="submit" class="btn btn-primary w-100">Start work</button>
+                    </form>
+                }
 
-                    @if (Model.CanAct(LifecycleEvent.Close))
-                    {
-                        <p class="text-muted small">The work is done. Close the request to finish it.</p>
-                        <form method="post" asp-page-handler="Close" asp-route-id="@request.Id">
-                            <input type="hidden" asp-for="Version" />
-                            <button type="submit" class="btn btn-dark w-100">Close request</button>
-                        </form>
-                    }
-                </div>
+                @if (Model.CanAct(LifecycleEvent.Resolve))
+                {
+                    <p>Describe what was done. The requester will see this note.</p>
+                    <form method="post" asp-page-handler="Resolve" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <div class="mb-3">
+                            <label asp-for="ResolutionNote" class="form-label">What was done</label>
+                            <textarea asp-for="ResolutionNote" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="ResolutionNote" class="text-danger"></span>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Mark as resolved</button>
+                    </form>
+                }
+
+                @if (Model.CanAct(LifecycleEvent.Close))
+                {
+                    <p>The work is done. Close the request to finish it.</p>
+                    <form method="post" asp-page-handler="Close" asp-route-id="@request.Id">
+                        <input type="hidden" asp-for="Version" />
+                        <button type="submit" class="btn btn-dark w-100">Close request</button>
+                    </form>
+                }
             </section>
-        </div>
-    }
-</div>
+        }
+        else
+        {
+            <section class="cc-panel" aria-labelledby="where-heading">
+                <h2 id="where-heading">Where it is now</h2>
+                <p class="cc-waiting mb-0">@StatusDisplay.Explain(request.Status)</p>
+            </section>
+        }
 
-<p class="mt-4">
-    @if (User.IsInRole("Requester") && !Model.ShowRequester)
-    {
-        <a asp-page="/Requests/Index">Back to my requests</a>
-    }
-    else
-    {
-        <a asp-page="/Staff/Index">Back to the work queue</a>
-    }
-</p>
+        <p class="mt-3">
+            @if (User.IsInRole("Requester") && !Model.ShowRequester)
+            {
+                <a asp-page="/Requests/Index">Back to my requests</a>
+            }
+            else
+            {
+                <a asp-page="/Staff/Index">Back to the work queue</a>
+            }
+        </p>
+    </div>
+</div>

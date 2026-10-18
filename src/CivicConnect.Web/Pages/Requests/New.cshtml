@@ -5,42 +5,49 @@
 }
 
 <div class="row">
-    <div class="col-lg-8">
-        <h1 class="h3 mb-1">Submit a service request</h1>
-        <p class="text-muted">Fields marked <span aria-hidden="true">*</span><span class="visually-hidden">as required</span> are required.</p>
+    <div class="col-lg-8 col-xl-7">
+        <div class="cc-page-head">
+            <div>
+                <h1>Submit a request</h1>
+                <p class="cc-lead">Tell us what needs attention. Fields marked <span class="cc-required" aria-hidden="true">*</span><span class="visually-hidden">as required</span> are required.</p>
+            </div>
+        </div>
 
-        <form method="post" novalidate>
+        <form method="post" novalidate class="cc-panel">
             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-            <div class="mb-3">
-                <label asp-for="Input.CategoryId" class="form-label">Category <span aria-hidden="true">*</span></label>
+            <div class="mb-4">
+                <label asp-for="Input.CategoryId" class="form-label">Category <span class="cc-required" aria-hidden="true">*</span></label>
                 <select asp-for="Input.CategoryId" asp-items="Model.Categories" class="form-select" required>
                     <option value="">Choose a category</option>
                 </select>
                 <span asp-validation-for="Input.CategoryId" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.Title" class="form-label">Title <span aria-hidden="true">*</span></label>
+            <div class="mb-4">
+                <label asp-for="Input.Title" class="form-label">Title <span class="cc-required" aria-hidden="true">*</span></label>
                 <input asp-for="Input.Title" class="form-control" required aria-describedby="title-hint" />
-                <div id="title-hint" class="form-text">A short summary, for example "Broken light in the hall".</div>
+                <div id="title-hint" class="form-text">A short summary, for example "Light out at the hall entrance".</div>
                 <span asp-validation-for="Input.Title" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Input.Description" class="form-label">Description <span aria-hidden="true">*</span></label>
-                <textarea asp-for="Input.Description" class="form-control" rows="6" required></textarea>
+            <div class="mb-4">
+                <label asp-for="Input.Description" class="form-label">Description <span class="cc-required" aria-hidden="true">*</span></label>
+                <textarea asp-for="Input.Description" class="form-control" rows="6" required aria-describedby="description-hint"></textarea>
+                <div id="description-hint" class="form-text">What's wrong, since when, and anything that will help us find it.</div>
                 <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
                 <label asp-for="Input.Location" class="form-label"></label>
                 <input asp-for="Input.Location" class="form-control" />
                 <span asp-validation-for="Input.Location" class="text-danger"></span>
             </div>
 
-            <button type="submit" class="btn btn-primary">Submit request</button>
-            <a asp-page="/Requests/Index" class="btn btn-link">Cancel</a>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Submit request</button>
+                <a asp-page="/Requests/Index" class="btn btn-link">Cancel</a>
+            </div>
         </form>
     </div>
 </div>
