@@ -21,18 +21,20 @@ Early development (Milestone 3 in progress)
 - `src/CivicConnect.Web`: Razor Pages website.
   - Sign in, sign out, and requester self-registration.
   - Requesters can submit a request and see "My requests".
-  - Staff have a work queue; a request's detail page lets staff or a supervisor accept or reject it.
+  - Staff have a work queue. The request detail page offers only the next allowed step:
+    accept or reject, assign (supervisors choose anyone, staff assign themselves), start work,
+    resolve with a note, and close.
   - The request lifecycle demo page.
-- `tests/CivicConnect.Domain.Tests`: xUnit tests for TC-LC-01 to TC-LC-16 and the pure parts of
+- `tests/CivicConnect.Domain.Tests`: xUnit tests for TC-LC-01 to TC-LC-16, which actions each user is
+  offered, a full Submitted-to-Closed journey, and the pure parts of
   TC-IN-01 to TC-IN-03, TC-AZ-01 and TC-AZ-05.
 - `tests/CivicConnect.Integration.Tests`: tests against a real PostgreSQL and the running web app for
   TC-PE-01 to TC-PE-03, TC-AZ-01 to TC-AZ-05 and the database parts of TC-IN-01 to TC-IN-03.
 - CI (`.github/workflows/ci.yml`): build, all tests, vulnerable-package check and secrets scan on every
   pull request and push to `main` or `development`.
 
-**Not yet implemented:** assign / start / resolve / close in the UI (the engine and service already
-support them), log on behalf (FR-020, TC-IN-04), feedback notices, reporting, administration pages
-(TC-AZ-06).
+**Not yet implemented:** reopening a resolved request (OD-05), log on behalf (FR-020, TC-IN-04),
+feedback notices, reporting, administration pages (TC-AZ-06).
 
 ## Prerequisites
 
@@ -97,10 +99,12 @@ dotnet run --project src/CivicConnect.Web
 
 Then open http://localhost:5146
 
-To try the review flow:
-1. Sign in as a requester (or create an account) and submit a request.
-2. Sign out, sign in as `staff@` or `supervisor@`, and open the request from the work queue.
-3. Accept it, or reject it with a reason.
+To walk a request through its whole life (demo password for every account is your `Seed:DemoPassword`):
+1. `requester@` submits a request.
+2. `staff@` opens it from the work queue and accepts it.
+3. `supervisor@` assigns it to Demo Staff Member (or `staff@` clicks "Assign to me").
+4. `staff@` clicks "Start work", then resolves it with a note.
+5. `supervisor@` closes it. The requester sees the resolution note and the full history.
 
 ## Structure
 

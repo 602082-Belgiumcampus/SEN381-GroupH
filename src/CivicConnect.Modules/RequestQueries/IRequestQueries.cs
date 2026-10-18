@@ -61,4 +61,9 @@ public interface IRequestQueries
     Task<PagedResult<RequestSummary>> GetStaffQueueAsync(Actor actor, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<RequestDetail?> GetDetailAsync(Guid requestId, Actor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>Active service staff and supervisors, for the supervisor's "assign to" list (FR-010).</summary>
+    Task<IReadOnlyList<StaffOption>> GetAssignableStaffAsync(CancellationToken cancellationToken = default);
 }
+
+public sealed record StaffOption(Guid Id, string Name);

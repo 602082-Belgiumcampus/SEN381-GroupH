@@ -87,6 +87,26 @@ public sealed class RequestQueryService(CivicConnectDbContext db) : IRequestQuer
             history);
     }
 
+    public async Task<IReadOnlyList<StaffOption>> GetAssignableStaffAsync(CancellationToken cancellationToken = default)
+    {
+        // A List (not an array): with C# 14 an array's Contains can bind to a span overload inside queries
+        var staffRoleNames = new List<string> { nameof(Role.ServiceStaff), nameof(Role.Supervisor) };
+
+        var staff = await (from user in db.Users
+                           join userRole in db.UserRoles on user.Id equals userRole.UserId
+                           join role in db.Roles on userRole.RoleId equals role.Id
+                           where user.IsActive && staffRoleNames.Contains(role.Name!)
+                           select new { user.Id, user.DisplayName })
+            .AsNoTracking()
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return staff
+            .OrderBy(s => s.DisplayName)
+            .Select(s => new StaffOption(s.Id, s.DisplayName))
+            .ToList();
+    }
+
     private static async Task<PagedResult<RequestSummary>> PageAsync(
         IQueryable<ServiceRequest> query, int page, int pageSize, CancellationToken cancellationToken)
     {

@@ -54,6 +54,11 @@
                         <dt class="col-sm-4">Resolution</dt>
                         <dd class="col-sm-8">@request.ResolutionNote</dd>
                     }
+                    @if (request.ClosedAt is DateTimeOffset closedAt)
+                    {
+                        <dt class="col-sm-4">Closed</dt>
+                        <dd class="col-sm-8">@closedAt.ToLocalTime().ToString("d MMM yyyy HH:mm")</dd>
+                    }
                 </dl>
             </div>
         </section>
@@ -77,15 +82,19 @@
         </section>
     </div>
 
-    @if (Model.CanAccept || Model.CanReject)
+    @if (Model.Actions.Count > 0)
     {
         <div class="col-lg-4">
-            <section class="card" aria-labelledby="review-heading">
+            <section class="card" aria-labelledby="actions-heading">
                 <div class="card-body">
-                    <h2 class="h5" id="review-heading">Review this request</h2>
-                    <p class="text-muted small">Accept it to take it forward, or reject it with a reason the requester will see.</p>
+                    <h2 class="h5" id="actions-heading">Next step</h2>
 
-                    @if (Model.CanAccept)
+                    @if (Model.CanAct(LifecycleEvent.Accept) || Model.CanAct(LifecycleEvent.Reject))
+                    {
+                        <p class="text-muted small">Accept it to take it forward, or reject it with a reason the requester will see.</p>
+                    }
+
+                    @if (Model.CanAct(LifecycleEvent.Accept))
                     {
                         <form method="post" asp-page-handler="Accept" asp-route-id="@request.Id" class="mb-4">
                             <input type="hidden" asp-for="Version" />
@@ -93,7 +102,7 @@
                         </form>
                     }
 
-                    @if (Model.CanReject)
+                    @if (Model.CanAct(LifecycleEvent.Reject))
                     {
                         <form method="post" asp-page-handler="Reject" asp-route-id="@request.Id">
                             <input type="hidden" asp-for="Version" />
@@ -103,6 +112,65 @@
                                 <span asp-validation-for="RejectionReason" class="text-danger"></span>
                             </div>
                             <button type="submit" class="btn btn-outline-danger w-100">Reject request</button>
+                        </form>
+                    }
+
+                    @if (Model.CanAct(LifecycleEvent.Assign))
+                    {
+                        @if (Model.CanAssignOthers)
+                        {
+                            <p class="text-muted small">Choose who will do the work.</p>
+                            <form method="post" asp-page-handler="Assign" asp-route-id="@request.Id">
+                                <input type="hidden" asp-for="Version" />
+                                <div class="mb-2">
+                                    <label asp-for="AssigneeId" class="form-label">Assign to</label>
+                                    <select asp-for="AssigneeId" asp-items="Model.StaffOptions" class="form-select">
+                                        <option value="">Choose a staff member</option>
+                                    </select>
+                                    <span asp-validation-for="AssigneeId" class="text-danger"></span>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Assign request</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="text-muted small">Take this request to work on it yourself.</p>
+                            <form method="post" asp-page-handler="AssignToMe" asp-route-id="@request.Id">
+                                <input type="hidden" asp-for="Version" />
+                                <button type="submit" class="btn btn-primary w-100">Assign to me</button>
+                            </form>
+                        }
+                    }
+
+                    @if (Model.CanAct(LifecycleEvent.Start))
+                    {
+                        <p class="text-muted small">This request is assigned to you. Start when you begin the work.</p>
+                        <form method="post" asp-page-handler="Start" asp-route-id="@request.Id">
+                            <input type="hidden" asp-for="Version" />
+                            <button type="submit" class="btn btn-primary w-100">Start work</button>
+                        </form>
+                    }
+
+                    @if (Model.CanAct(LifecycleEvent.Resolve))
+                    {
+                        <p class="text-muted small">Describe what was done. The requester will see this note.</p>
+                        <form method="post" asp-page-handler="Resolve" asp-route-id="@request.Id">
+                            <input type="hidden" asp-for="Version" />
+                            <div class="mb-2">
+                                <label asp-for="ResolutionNote" class="form-label">Resolution note</label>
+                                <textarea asp-for="ResolutionNote" class="form-control" rows="3"></textarea>
+                                <span asp-validation-for="ResolutionNote" class="text-danger"></span>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Mark as resolved</button>
+                        </form>
+                    }
+
+                    @if (Model.CanAct(LifecycleEvent.Close))
+                    {
+                        <p class="text-muted small">The work is done. Close the request to finish it.</p>
+                        <form method="post" asp-page-handler="Close" asp-route-id="@request.Id">
+                            <input type="hidden" asp-for="Version" />
+                            <button type="submit" class="btn btn-dark w-100">Close request</button>
                         </form>
                     }
                 </div>
