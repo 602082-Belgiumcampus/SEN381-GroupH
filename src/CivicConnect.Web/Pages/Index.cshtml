@@ -2,31 +2,80 @@
 @model IndexModel
 @{
     ViewData["Title"] = "Home";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var isRequester = User.IsInRole("Requester");
+    var isStaff = User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management");
 }
 
-<div class="text-center">
-    <h1 class="display-4">CivicConnect</h1>
-    <p class="lead">Service-request management</p>
+@if (!signedIn)
+{
+    <section class="cc-hero" aria-labelledby="hero-heading">
+        <div>
+            <h1 id="hero-heading">Report a problem. Follow it until it's fixed.</h1>
+            <p>
+                Tell us about a broken light, a blocked drain or anything else that needs attention.
+                You get a reference number straight away and can see every step until the work is done.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary btn-lg" asp-page="/Account/Register">Create an account</a>
+                <a class="btn btn-outline-primary btn-lg" asp-page="/Account/Login">Sign in</a>
+            </div>
+        </div>
 
-    @if (User.Identity?.IsAuthenticated != true)
-    {
-        <p>Sign in to submit a request or follow one you have already submitted.</p>
-        <a class="btn btn-primary" asp-page="/Account/Login">Sign in</a>
-        <a class="btn btn-outline-primary" asp-page="/Account/Register">Create an account</a>
-    }
-    else
-    {
-        <p>Signed in as @User.Identity.Name.</p>
-        @if (User.IsInRole("Requester"))
-        {
-            <a class="btn btn-primary" asp-page="/Requests/New">Submit a request</a>
-            <a class="btn btn-outline-primary" asp-page="/Requests/Index">My requests</a>
-        }
-        @if (User.IsInRole("ServiceStaff") || User.IsInRole("Supervisor") || User.IsInRole("Management"))
-        {
-            <a class="btn btn-primary" asp-page="/Staff/Index">Open the work queue</a>
-        }
-    }
+        <figure class="cc-ticket m-0" aria-label="Example of a request being tracked">
+            <div class="cc-ticket__ref">CC-2026-000042</div>
+            <div class="cc-ticket__title">Light out at the hall entrance</div>
+            <div class="cc-ticket__meta">Facilities and maintenance, assigned to Demo Staff Member</div>
+            <partial name="_StatusTrack" model="RequestStatus.InProgress" />
+        </figure>
+    </section>
 
-    <p class="mt-4"><a asp-page="/Lifecycle">See how a request moves through its states</a></p>
-</div>
+    <section class="cc-steps" aria-label="How it works">
+        <div>
+            <h2>Tell us what's wrong</h2>
+            <p>Pick a category, give it a title and describe the problem.</p>
+        </div>
+        <div>
+            <h2>We review and assign it</h2>
+            <p>Staff accept your request and give it to the right person.</p>
+        </div>
+        <div>
+            <h2>See it resolved</h2>
+            <p>You can read what was done and when, in one place.</p>
+        </div>
+    </section>
+}
+else
+{
+    <div class="cc-page-head">
+        <div>
+            <h1>Welcome back</h1>
+            <p class="cc-lead">Signed in as @User.Identity!.Name</p>
+        </div>
+    </div>
+
+    <div class="cc-welcome">
+        @if (isRequester)
+        {
+            <a class="cc-action" asp-page="/Requests/New">
+                <strong>Submit a request</strong>
+                <span>Report something that needs attention.</span>
+            </a>
+            <a class="cc-action" asp-page="/Requests/Index">
+                <strong>My requests</strong>
+                <span>See where your requests are.</span>
+            </a>
+        }
+        @if (isStaff)
+        {
+            <a class="cc-action" asp-page="/Staff/Index">
+                <strong>Work queue</strong>
+                <span>Review, assign and resolve requests.</span>
+            </a>
+        }
+        <a class="cc-action" asp-page="/Lifecycle">
+            <strong>How requests move</strong>
+            <span>The steps every request goes through.</span>
+        </a>
+    </div>
+}

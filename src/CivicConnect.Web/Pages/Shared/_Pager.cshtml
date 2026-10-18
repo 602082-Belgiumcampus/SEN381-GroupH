@@ -2,15 +2,15 @@
 
 @if (Model.PageCount > 1)
 {
-    <nav aria-label="Pages" class="d-flex align-items-center gap-3">
+    <nav aria-label="Pages" class="cc-pager">
         @if (Model.HasPrevious)
         {
-            <a class="btn btn-outline-secondary btn-sm" asp-route-pageNumber="@(Model.Page - 1)">Previous</a>
+            <a class="btn btn-outline-primary btn-sm" asp-route-pageNumber="@(Model.Page - 1)">Previous page</a>
         }
         <span>Page @Model.Page of @Model.PageCount</span>
         @if (Model.HasNext)
         {
-            <a class="btn btn-outline-secondary btn-sm" asp-route-pageNumber="@(Model.Page + 1)">Next</a>
+            <a class="btn btn-outline-primary btn-sm" asp-route-pageNumber="@(Model.Page + 1)">Next page</a>
         }
     </nav>
 }
